@@ -122,19 +122,20 @@ export function playCard(state: PlayerState, handIndex: number): PlayerState {
 // End of month: interest, loan paydown, overdraft.
 
 function accrueInterest(state: PlayerState): PlayerState {
-  let interest = 0
+  // Card interest is paid from cash, as if the minimum payment covers it, so
+  // balances hold steady. Carrying a balance costs money every month instead
+  // of silently compounding the player past a utilization tier.
+  const interest = state.accounts
+    .filter((a) => a.open && a.kind === 'revolving')
+    .reduce((sum, a) => sum + a.balance * CARD_INTEREST_MONTHLY, 0)
   const accounts = state.accounts.map((a) => {
-    if (!a.open) return a
-    if (a.kind === 'revolving') {
-      interest += a.balance * CARD_INTEREST_MONTHLY
-      return { ...a, balance: a.balance * (1 + CARD_INTEREST_MONTHLY) }
-    }
+    if (!a.open || a.kind === 'revolving') return a
     const balance = Math.max(0, a.balance - INSTALLMENT_PRINCIPAL_SHARE * (a.monthlyPayment ?? 0))
     // A loan that reaches zero is paid off and stops counting toward DTI.
     return { ...a, balance, open: balance > 0 }
   })
-  const next = { ...state, accounts }
-  return interest >= 1 ? addLog(next, `Card interest charged: ${formatMoney(interest)}.`) : next
+  const next = { ...state, cash: state.cash - interest, accounts }
+  return interest >= 1 ? addLog(next, `Card interest paid: ${formatMoney(interest)}.`) : next
 }
 
 function coverOverdraft(state: PlayerState): PlayerState {

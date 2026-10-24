@@ -151,9 +151,12 @@ describe('end of month', () => {
     ...change,
   })
 
-  it('charges 2% card interest and pays down installment loans', () => {
-    const after = endMonth(resolved())
-    expect(findAccount(after, 'old_faithful')?.balance).toBeCloseTo(2_550)
+  it('pays 2% card interest from cash and pays down installment loans', () => {
+    const before = resolved()
+    const after = endMonth(before)
+    // Interest on $4,500 of card balances comes out of cash; balances hold steady.
+    expect(after.cash).toBeCloseTo(before.cash - 90)
+    expect(findAccount(after, 'old_faithful')?.balance).toBe(2_500)
     expect(findAccount(after, 'car')?.balance).toBeCloseTo(9_000 - 0.6 * 380)
     expect(after.hand).toEqual([])
   })
@@ -161,8 +164,8 @@ describe('end of month', () => {
   it('moves a cash shortfall onto the card with the most room', () => {
     const after = endMonth(resolved({ cash: -500 }))
     expect(after.cash).toBe(0)
-    // The Rewards Card had $1,000 of room; Old Faithful only $500.
-    expect(findAccount(after, 'rewards')?.balance).toBeCloseTo((2_000 + 500) * 1.0 + 2_000 * 0.02)
+    // -$500 plus $90 of interest; the Rewards Card had $1,000 of room, Old Faithful only $500.
+    expect(findAccount(after, 'rewards')?.balance).toBeCloseTo(2_000 + 590)
     expect(after.missedPayments).toBe(1)
   })
 

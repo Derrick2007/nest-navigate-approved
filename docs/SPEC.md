@@ -99,6 +99,16 @@ Accounts:
 
 With these numbers the starting score is **656** and a player who does nothing qualifies for roughly **$278k**, short of the $325k target. Good play reaches $310k–$365k. Closing the oldest card drops the score to about **618**, below the 620 gate. These outcomes are intentional; keep them when tuning.
 
+**Balance (milestone 6).** `src/engine/__tests__/balance.test.ts` plays 100 seeds per strategy and locks these bands in (`BALANCE_REPORT=1 npm test` prints the table). Measured after tuning:
+
+| Strategy | Approved | Median max price | Band enforced |
+|---|---|---|---|
+| Idle: never plays a card, cautious event choices | 0% | $289k | 0% approved, median $275k–$300k |
+| Random: uniform legal moves | 14% | $305k | 8–35% approved |
+| Greedy: one-step lookahead on projected max price | 88% | $358k | 70–95% approved, median $310k–$365k |
+
+Tuning changes: card interest is paid from cash instead of compounding the balance (an idle player's score no longer drifts from 656 to 634 by crossing a utilization tier), Side Gig pays $400/mo (was $600), Sell Unused Stuff pays $600 (was $900). Before tuning, greedy was approved 94% of the time with a $366k median.
+
 ## 6. Formulas
 
 ### 6.1 Credit score (simplified FICO-style, 300–850)
@@ -167,7 +177,7 @@ Also return, at the target price (or maxPrice if lower): rate with its tier brea
 2. **Event:** draw one event from the event deck (seeded). If it has a choice, block until the player picks.
 3. **Hand:** draw 5 cards, energy = 3. Each card costs 1 or 2 energy. Unplayed cards go to discard. Reshuffle discard when deck is empty.
 4. **End month:**
-   - Revolving balances grow by 2% (24% APR). Log the interest charged.
+   - Card interest of 2% a month (24% APR) is paid from cash, as if the minimum payment covers it; revolving balances hold steady. Log the interest paid.
    - Installment balances drop by their payment's principal share (simplify: balance −= 0.6 × payment).
    - If `cash < 0`: move the shortfall onto the revolving card with most room. If any part of it doesn't fit, `missedPayments += 1` (unless `flags.autopay`) and set cash to 0.
    - An installment loan whose balance reaches 0 closes.
@@ -201,13 +211,13 @@ Deck starts with 2 copies of cards marked ×2, 1 copy otherwise. `once` cards ar
 | `balance_blitz` | Balance Blitz | 2 | cash −2,500 split across cards | Getting under 30%, then 10%, unlocks big jumps |
 | `extra_car` | Extra Car Payment | 1 | cash −1,500; car balance −1,500 | Lowering a balance doesn't lower DTI; the payment is what counts |
 | `pay_off_car` once | Pay Off the Car | 2 | cash −car balance; car account closed | Removing a monthly payment frees DTI room for housing |
-| `side_gig` once | Start a Side Gig | 1 | unverifiedIncome +600 | Lenders usually want about 2 years of history before counting new income |
+| `side_gig` once | Start a Side Gig | 1 | unverifiedIncome +400 | Lenders usually want about 2 years of history before counting new income |
 | `ask_raise` once | Ask for a Raise | 1 | 50%: income +5% (verified) | Same-employer raises count right away |
 | `limit_increase` once | Request Limit Increase | 1 | Old Faithful limit +3,000 | More available credit lowers utilization without paying anything |
 | `store_card` | Store Card Bonus | 1 | cash +200; inquiry +1; new revolving account, age 0, limit 1,500 | New accounts cost inquiries and lower average age |
 | `close_old` once | Close Your Oldest Card | 1 | Old Faithful closed (balance moved to Rewards Card) | Closing old cards shortens history and raises utilization |
 | `meal_prep` ×2 | Meal Prep Month | 1 | cash +400 | Cash covers down payment, closing costs and reserves |
-| `sell_stuff` | Sell Unused Stuff | 2 | cash +900 | |
+| `sell_stuff` | Sell Unused Stuff | 2 | cash +600 | |
 | `cheaper_place` once | Move Somewhere Cheaper | 2 | cash −800; monthlySurplus +300 | Recurring savings compound over the year |
 | `autopay` once | Set Up Autopay | 1 | flags.autopay = true | Payment history is the largest score factor |
 | `dispute` once | Dispute a Report Error | 1 | 40%: missedPayments −1 | Credit reports contain errors; checking is free |

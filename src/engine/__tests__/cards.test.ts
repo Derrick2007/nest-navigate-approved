@@ -21,9 +21,9 @@ describe('card effects', () => {
     const after = applyCard(before, 'side_gig')
     expect(dti(after, 2_000)).toBe(dti(before, 2_000))
     expect(underwrite(after).maxPrice).toBe(underwrite(before).maxPrice)
-    // Next paycheck: surplus plus the $600 the lender won't count.
+    // Next paycheck: surplus plus the $400 the lender won't count.
     const paid = payday(after)
-    expect(paid.cash).toBe(before.cash + 700 + 600)
+    expect(paid.cash).toBe(before.cash + 700 + 400)
   })
 
   it('pay off the car removes its payment and then becomes unavailable', () => {

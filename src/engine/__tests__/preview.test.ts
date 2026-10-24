@@ -50,9 +50,11 @@ describe('preview', () => {
     expect(find(previewChoice(startState(), card), 'utilization')?.good).toBe(false)
   })
 
-  it('previews end-of-month card interest', () => {
+  it('previews end-of-month card interest as a cash cost', () => {
     const state = { ...startState(), event: { eventId: 'quiet' as const, resolved: true } }
-    expect(find(previewEndMonth(state), 'utilization')?.good).toBe(false)
+    const deltas = previewEndMonth(state)
+    expect(find(deltas, 'cash')?.after).toBeCloseTo(state.cash - 90)
+    expect(find(deltas, 'utilization')).toBeUndefined()
   })
 
   it('always includes max price but drops stats that did not move', () => {

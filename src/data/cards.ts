@@ -129,12 +129,12 @@ export const CARDS: Record<CardId, CardDef> = {
     cost: 1,
     copies: 1,
     once: true,
-    description: 'Earn an extra $600 a month delivering on weekends.',
+    description: 'Earn an extra $400 a month delivering on weekends.',
     lesson: 'Lenders usually want about 2 years of history before they count new side income.',
     play: (state) =>
       addLog(
-        { ...state, unverifiedIncome: state.unverifiedIncome + 600 },
-        "Started a side gig: +$600 a month in cash. A lender won't count it yet.",
+        { ...state, unverifiedIncome: state.unverifiedIncome + 400 },
+        "Started a side gig: +$400 a month in cash. A lender won't count it yet.",
       ),
   },
   ask_raise: {
@@ -224,8 +224,8 @@ export const CARDS: Record<CardId, CardDef> = {
     cost: 2,
     copies: 1,
     once: false,
-    description: 'Sell the bike, the old console and the bread maker for $900.',
-    play: (state) => addLog({ ...state, cash: state.cash + 900 }, 'Sold unused stuff: +$900.'),
+    description: 'Sell the bike, the old console and the bread maker for $600.',
+    play: (state) => addLog({ ...state, cash: state.cash + 600 }, 'Sold unused stuff: +$600.'),
   },
   cheaper_place: {
     id: 'cheaper_place',
