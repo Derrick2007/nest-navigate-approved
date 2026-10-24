@@ -1,0 +1,36 @@
+.stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 200px;
+  /* Confetti may fly past the edges of the card; keep the page from scrolling sideways. */
+  overflow: hidden;
+}
+
+.stage canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Shown instead of the animation under reduced motion. */
+.static {
+  padding: 8px 24px;
+  border: 5px solid currentcolor;
+  border-radius: 12px;
+  font-size: clamp(28px, 7vw, 48px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  transform: rotate(-6deg);
+}
+
+.good {
+  color: var(--good);
+}
+
+.warn {
+  color: var(--warn);
+}
+
+.bad {
+  color: var(--bad);
+}
