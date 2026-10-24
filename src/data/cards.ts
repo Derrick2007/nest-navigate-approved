@@ -118,6 +118,8 @@ export const CARDS: Record<CardId, CardDef> = {
     name: 'Extra Car Payment',
     cost: 1,
     copies: 1,
+    // A trap card that teaches by being in your hand; nobody would draft it.
+    draftWeight: 0,
     once: false,
     description: 'Choose how much extra to pay on the car loan.',
     lesson: "Lowering a loan balance doesn't lower your DTI. Lenders count the monthly payment.",
@@ -230,6 +232,8 @@ export const CARDS: Record<CardId, CardDef> = {
     name: 'Close Your Oldest Card',
     cost: 1,
     copies: 1,
+    // A trap card that teaches by being in your hand; nobody would draft it.
+    draftWeight: 0,
     once: true,
     description: 'Close Old Faithful Visa. Its balance moves to your Rewards Card.',
     lesson: 'Closing an old card shortens your credit history and raises utilization.',

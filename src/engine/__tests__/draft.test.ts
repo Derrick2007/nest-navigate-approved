@@ -47,12 +47,14 @@ describe('draft offers', () => {
     expect(ids).not.toContain('gift_funds')
     expect(ids).not.toContain('autopay')
     expect(ids).toContain('overtime') // repeatable cards stay in the pool
+    // Trap cards teach from the starting hand; they are never offered.
+    expect(ids).not.toContain('extra_car')
+    expect(ids).not.toContain('close_old')
   })
 
   it('never offers a card that can no longer work', () => {
     const noCar = applyCard(startState(), 'pay_off_car')
     const ids = draftPool(noCar).map((c) => c.id)
-    expect(ids).not.toContain('extra_car')
     // A short month (no cash) is not a lasting reason, so cash cards stay.
     expect(draftPool({ ...startState(), cash: 0 }).map((c) => c.id)).toContain('pay_cards')
   })
