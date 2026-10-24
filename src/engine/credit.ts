@@ -61,7 +61,8 @@ export function creditBreakdown(state: PlayerState): CreditBreakdown {
   const hasRevolving = open.some((a) => a.kind === 'revolving')
   const hasInstallment = open.some((a) => a.kind === 'installment')
 
-  const paymentHistory = Math.max(0, 192 * (1 - 0.15 * state.missedPayments))
+  // Reported rent adds on-time history (Report Your Rent).
+  const paymentHistory = Math.max(0, 192 * (1 - 0.15 * state.missedPayments)) + (state.flags.rentReporting ? 15 : 0)
   const utilizationPts = utilizationPoints(utilization(state))
   const age = Math.min(82, averageAccountAge(state) * 8)
   // Like FICO, new credit counts inquiries and accounts opened in the last year.

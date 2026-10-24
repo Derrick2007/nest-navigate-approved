@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { CARDS } from '../../data/cards'
+import { EVENTS } from '../../data/events'
+import { creditScore } from '../credit'
 import { DRAFT_SIZE, draftPool, drawDraftOffer, takeDraft } from '../draft'
 import { previewCard } from '../preview'
-import { endMonth, gameReducer, newRun, type GameState } from '../reducer'
+import { endMonth, gameReducer, newRun, startMonth, type GameState } from '../reducer'
 import { createRng } from '../rng'
 import type { PlayerState } from '../types'
 import { monthlyDebts } from '../underwrite'
@@ -133,3 +135,31 @@ describe('draft-only cards', () => {
     expect(after.grossMonthlyIncome).toBe(startState().grossMonthlyIncome)
   })
 })
+
+describe('renter-to-buyer cards', () => {
+  it('reported rent adds payment history', () => {
+    expect(creditScore(applyCard(startState(), 'report_rent'))).toBe(creditScore(startState()) + 15)
+  })
+
+  it('a roommate saves $500 a month but costs energy every month', () => {
+    const after = applyCard(startState(), 'roommate')
+    expect(after.monthlySurplus).toBe(startState().monthlySurplus + 500)
+    expect(newRunEnergy({ ...after, month: 2 })).toBe(2)
+  })
+
+  it('shopping lenders lowers the rate', () => {
+    expect(applyCard(startState(), 'shop_lenders').baseRate).toBe(6.125)
+  })
+
+  it('a locked rate ignores rate rises', () => {
+    const locked = applyCard(startState(), 'lock_rate')
+    expect(locked.cash).toBe(21_500)
+    expect(EVENTS.rates_up.effect!(locked, createRng(1)).baseRate).toBe(6.25)
+  })
+
+  it('the buyer grant adds cash', () => {
+    expect(applyCard(startState(), 'buyer_grant').cash).toBe(26_000)
+  })
+})
+
+const newRunEnergy = (state: PlayerState) => startMonth(state).energy

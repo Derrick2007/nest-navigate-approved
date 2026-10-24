@@ -25,7 +25,7 @@ Requires Node.js 20.19+ (developed on Node 26).
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 121 tests: engine, previews, lessons, balance simulations
+npm test         # 126 tests: engine, previews, lessons, balance simulations
 npm run build    # type-check and production build
 npm run lint     # oxlint
 ```
@@ -42,12 +42,12 @@ A four-page intro explains the game before you can start. Then each month you ge
 - **A pure TypeScript engine (`src/engine/`), with no React in it.** Credit score, mortgage math, underwriting, the month loop and the lesson picker are plain functions of state. That is what makes the core features possible:
   - **Previews run the real rules.** Every card, event choice and "End month" shows its effect by running the actual effect on the current state and diffing the numbers, so a preview can never disagree with what happens.
   - **It is fully testable**, including whole simulated games.
-- **Content is data (`src/data/`).** The 20 cards and 12 events are typed `Record<Id, Def>` entries with their effect, unavailability reason, lesson, slider range and draft weight. Adding a card is one entry, and the compiler fails if an id has no definition.
+- **Content is data (`src/data/`).** The 25 cards and 12 events are typed `Record<Id, Def>` entries with their effect, unavailability reason, lesson, slider range and draft weight. Adding a card is one entry, and the compiler fails if an id has no definition.
 - **`useReducer` + context, no state library.** One reducer (`START`, `RESOLVE_EVENT`, `PLAY_CARD` with an optional amount, `END_MONTH`, `DRAFT_PICK`, `SHOW_RESULT`, `RESTART`) wraps the engine. Slider amounts are snapped to a legal value by the same function in the reducer and the UI (`engine/amounts.ts`), so the UI can't offer a payment the rules would refuse. Derived numbers (score, DTI, max price) are computed with `useMemo`, never stored, so they cannot go stale.
 - **Seeded RNG (mulberry32).** The generator's state lives in game state, so the reducer stays pure, "Replay this year" replays the same events, draws and draft offers, and tests are deterministic.
 - **CSS Modules + design tokens**, no UI library. The look is small and custom, and the bundle stays at about 87 kB gzipped.
 - **Phaser 3 for the verdict (the bonus challenge).** At the end of the underwriting reveal, a rubber stamp (APPROVED / APPROVED FOR LESS / DENIED) slams down with a camera shake and an ink spatter, and a full approval fires confetti. React keeps all the game state; Phaser only draws (`src/phaser/stampGame.ts`). It is **lazy-loaded**: Phaser's ~320 kB gzipped chunk is fetched while the reveal lines play, so the first page load doesn't pay for it. The game is destroyed when the reveal unmounts, and under `prefers-reduced-motion` or a failed load it falls back to a static CSS stamp (`components/ApprovalStamp.tsx`).
-- **Vitest** for 121 tests: every formula and card, reducer edge cases (event blocking, overdrafts, missed payments), same-seed determinism, 200 random runs checking state invariants, and balance tests (below).
+- **Vitest** for 126 tests: every formula and card, reducer edge cases (event blocking, overdrafts, missed payments), same-seed determinism, 200 random runs checking state invariants, and balance tests (below).
 - **Vercel**, deployed from GitHub on every push to `main`.
 
 ### Balance, measured instead of guessed

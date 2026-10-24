@@ -245,6 +245,11 @@ Deck starts with 2 copies of cards marked ×2, none of cards marked *draft*, 1 c
 | `overtime` draft | Pick Up Overtime | 2 | cash +800 | Overtime needs about two years of history before it counts as income |
 | `negotiate_apr` draft once | Call to Lower Your APR | 1 | card interest 2% → 1% a month | Card interest is negotiable, and asking doesn't touch your score |
 | `income_driven` draft once | Income-Driven Student Loan Plan | 1 | student payment $250 → $150 | Lenders count the reported payment, so a lower one can lower DTI (rules vary) |
+| `report_rent` draft once | Report Your Rent | 1 | payment history +15 points | Renters can build credit with the rent they already pay |
+| `roommate` draft once | Get a Roommate | 1 | monthlySurplus +500; 1 less energy every month | Cutting rent is the fastest way to save a down payment |
+| `shop_lenders` draft once | Shop 3 Lenders | 1 | baseRate −0.125 | Rate shopping in a short window counts as one inquiry |
+| `lock_rate` draft once | Lock Your Rate | 1 | cash −500; Rates Tick Up no longer applies | A rate lock is insurance against rate rises |
+| `buyer_grant` draft once | First-Time Buyer Grant | 2 | cash +4,000 | Down-payment assistance exists and is often missed |
 
 **Sliders** (`CardDef.amount`): `min`, `max`, `step`, `initial` and a `limit(state)` (what the player can put in now: cash, and what is owed). `engine/amounts.ts` turns these into the legal range and snaps any requested amount to it; the reducer and the UI both use it. Card-payment sliders mark where utilization crosses 30% and 10% (`paydownToReach`). Previews update as the slider moves.
 

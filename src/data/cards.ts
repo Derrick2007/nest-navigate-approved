@@ -412,6 +412,65 @@ export const CARDS: Record<CardId, CardDef> = {
     play: (state) =>
       addLog(updateAccount(state, 'student', { monthlyPayment: 150 }), 'Student loan payment cut to $150 a month.'),
   },
+  // Renting now, buying soon: cards tied to the move from renter to owner.
+  report_rent: {
+    id: 'report_rent',
+    name: 'Report Your Rent',
+    cost: 1,
+    ...DRAFT_ONLY,
+    once: true,
+    description: 'Sign up for a service that reports your on-time rent to the credit bureaus.',
+    lesson: 'Renters can build credit history with the rent they already pay.',
+    play: (state) =>
+      addLog({ ...state, flags: { ...state.flags, rentReporting: true } }, 'Your rent payments now count toward your credit history.'),
+  },
+  roommate: {
+    id: 'roommate',
+    name: 'Get a Roommate',
+    cost: 1,
+    ...DRAFT_ONLY,
+    once: true,
+    description: 'Split the rent and save $500 a month. Sharing a place costs 1 energy every month after.',
+    lesson: 'Rent is usually your biggest bill, so cutting it is the fastest way to save a down payment.',
+    play: (state) =>
+      addLog(
+        { ...state, monthlySurplus: state.monthlySurplus + 500, flags: { ...state.flags, roommate: true } },
+        'Got a roommate: +$500 a month, a little less free time.',
+      ),
+  },
+  shop_lenders: {
+    id: 'shop_lenders',
+    name: 'Shop 3 Lenders',
+    cost: 1,
+    ...DRAFT_ONLY,
+    once: true,
+    description: 'Compare quotes from three lenders. Your rate drops 0.125%. Mortgage inquiries close together count as one.',
+    lesson: 'Comparing lenders saves money, and rate shopping in a short window only counts as one inquiry.',
+    play: (state) =>
+      addLog({ ...state, baseRate: state.baseRate - 0.125 }, 'Shopped three lenders and found a rate 0.125% lower.'),
+  },
+  lock_rate: {
+    id: 'lock_rate',
+    name: 'Lock Your Rate',
+    cost: 1,
+    ...DRAFT_ONLY,
+    once: true,
+    description: 'Pay $500 so that rate rises no longer affect you this year.',
+    lesson: 'Rates move while you shop. A rate lock is insurance: you pay a little to avoid a bigger surprise.',
+    unavailable: needsCash(500),
+    play: (state) =>
+      addLog({ ...state, cash: state.cash - 500, flags: { ...state.flags, rateLocked: true } }, 'Locked your rate for $500.'),
+  },
+  buyer_grant: {
+    id: 'buyer_grant',
+    name: 'First-Time Buyer Grant',
+    cost: 2,
+    ...DRAFT_ONLY,
+    once: true,
+    description: 'Apply to a local down-payment assistance program for $4,000. The paperwork takes 2 energy.',
+    lesson: 'Many areas offer down-payment help for first-time buyers, and many buyers never ask.',
+    play: (state) => addLog({ ...state, cash: state.cash + 4_000 }, 'Approved for a $4,000 first-time buyer grant.'),
+  },
 }
 
 /** The starting deck: one entry per copy. */

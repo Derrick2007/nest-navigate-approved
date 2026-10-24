@@ -45,6 +45,11 @@ export type CardId =
   | 'overtime'
   | 'negotiate_apr'
   | 'income_driven'
+  | 'report_rent'
+  | 'roommate'
+  | 'shop_lenders'
+  | 'lock_rate'
+  | 'buyer_grant'
 
 export type EventId =
   | 'quiet'

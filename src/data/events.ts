@@ -122,6 +122,7 @@ export const EVENTS: Record<EventId, EventDef> = {
     description: 'Mortgage rates rose a quarter point.',
     weight: 1,
     effect: (state) => {
+      if (state.flags.rateLocked) return addLog(state, 'Rates rose, but your locked rate stays put.')
       const baseRate = state.baseRate + 0.25
       return addLog({ ...state, baseRate }, `Mortgage rates rose to a base of ${baseRate.toFixed(2)}%.`)
     },
