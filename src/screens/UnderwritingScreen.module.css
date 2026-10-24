@@ -1,0 +1,114 @@
+.screen {
+  display: grid;
+  gap: 24px;
+  max-width: 680px;
+  margin: 0 auto;
+  padding-top: 24px;
+}
+
+.header {
+  display: grid;
+  gap: 6px;
+}
+
+.kicker {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.title {
+  font-size: clamp(26px, 5vw, 34px);
+  line-height: 1.2;
+}
+
+.steps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  animation: arrive 300ms ease-out;
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step {
+    animation: none;
+  }
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-weight: 800;
+}
+
+.stepTitle {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stepDetail {
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+
+.pass .icon {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.fail {
+  border-color: var(--bad);
+}
+
+.fail .icon {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.warn .icon {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+/* Rate tiers read as one stacked sum, slightly inset. */
+.rate {
+  margin-left: 24px;
+  padding: 10px 16px;
+  background: var(--surface-muted);
+}
+
+.rate .icon {
+  width: 8px;
+  height: 8px;
+  margin: 8px 12px;
+  background: var(--accent);
+}
+
+.actions {
+  display: flex;
+}

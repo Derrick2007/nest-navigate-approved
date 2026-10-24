@@ -72,7 +72,7 @@ type PlayerState = {
 };
 ```
 
-The reducer wraps this in `GameState = { phase: 'start' } | { phase: 'playing' | 'finished'; player: PlayerState }`.
+The reducer wraps this in `GameState = { phase: 'start' } | { phase: 'playing' | 'underwriting' | 'result'; player: PlayerState }`. Ending month 12 moves to `underwriting` (the reveal); `SHOW_RESULT` moves on to `result`.
 
 Derived values are **pure functions**, never stored: `creditScore(state)`, `utilization(state)`, `dti(state, housingPayment)`, `underwrite(state)`.
 
@@ -234,7 +234,12 @@ One per month. Weighted random, no immediate repeats. Events with a choice show 
 - **What if:** "With a score 40 points higher, your rate would be X% and you'd pay $Y less over 30 years."
 - **Binding constraint:** "You were limited by DTI" or "You were limited by cash", with one sentence on which lever would have moved it.
 - **Lessons:** up to 3 lessons from cards and events the player actually hit, prioritised by impact (closing old card, side gig not counting, paying off car, utilization).
-- Buttons: Play again (new seed), Replay this seed.
+- Buttons: Play again (new seed), Replay this seed (labelled "Replay this year").
+
+Implementation notes:
+- Lessons come from `src/engine/lessons.ts`, in this priority: close oldest card, side gig, pay off car, financing a car, financing furniture, utilization (a card paydown, or a generic note if the player ends above 30% without touching their cards), extra car payment, accepting a card offer, then any other card played that has a lesson.
+- An approved player's binding constraint is framed as what set their ceiling ("Your $364k ceiling was set by debt-to-income"), not as a limit.
+- The reveal adds a line every 0.75s, can be skipped, and shows everything at once under `prefers-reduced-motion`. Its text comes from `src/screens/revealSteps.ts` (pure, tested).
 
 ## 11. Architecture
 
@@ -248,7 +253,7 @@ src/
     credit.ts        # creditScore + components
     mortgage.ts      # pmt, piti, rate tiers
     underwrite.ts
-    reducer.ts       # actions: START, RESOLVE_EVENT, PLAY_CARD, END_MONTH, RESTART
+    reducer.ts       # actions: START, RESOLVE_EVENT, PLAY_CARD, END_MONTH, SHOW_RESULT, RESTART
     preview.ts       # diff two states into display deltas
     __tests__/
   data/
