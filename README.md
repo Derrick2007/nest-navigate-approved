@@ -25,18 +25,70 @@ Requires Node.js 20.19+ (developed on Node 26).
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # engine unit tests (Vitest)
+npm test         # 86 tests: engine, previews, lessons, balance simulations
 npm run build    # type-check and production build
+npm run lint     # oxlint
 ```
+
+`BALANCE_REPORT=1 npm test` also prints the balance table (see below).
+
+### How to play
+
+Each month you get paid, face one life event, then spend up to 3 energy on cards. Every card shows what it would change before you play it: green helps, red hurts. Keep an eye on **max home price**, the most house you would be approved for today. After month 12 the Underwriter checks your numbers one by one and builds your rate. On a keyboard, number keys play a card or pick an event option and `E` ends the month.
 
 ## Tech Choices
 
-_Coming soon._
+- **Vite + React 19 + TypeScript.** Fast to set up and fast to iterate. Types earn their keep here because the game is mostly numbers: they catch a percent passed where a fraction was expected, or a card id with no definition.
+- **A pure TypeScript engine (`src/engine/`), with no React in it.** Credit score, mortgage math, underwriting, the month loop and the lesson picker are plain functions of state. That is what makes the core features possible:
+  - **Previews run the real rules.** Every card, event choice and "End month" shows its effect by running the actual effect on the current state and diffing the numbers, so a preview can never disagree with what happens.
+  - **It is fully testable**, including whole simulated games.
+- **Content is data (`src/data/`).** The 15 cards and 12 events are typed `Record<Id, Def>` entries with their effect, unavailability reason and lesson. Adding a card is one entry, and the compiler fails if an id has no definition.
+- **`useReducer` + context, no state library.** One reducer (`START`, `RESOLVE_EVENT`, `PLAY_CARD`, `END_MONTH`, `SHOW_RESULT`, `RESTART`) wraps the engine. Derived numbers (score, DTI, max price) are computed with `useMemo`, never stored, so they cannot go stale.
+- **Seeded RNG (mulberry32).** The generator's state lives in game state, so the reducer stays pure, "Replay this year" replays the same events and draws, and tests are deterministic.
+- **CSS Modules + design tokens**, no UI library. The look is small and custom, and the bundle stays at about 86 kB gzipped.
+- **Vitest** for 86 tests: every formula and card, reducer edge cases (event blocking, overdrafts, missed payments), same-seed determinism, 200 random runs checking state invariants, and balance tests (below).
+- **Vercel**, deployed from GitHub on every push to `main`.
+
+### Balance, measured instead of guessed
+
+`src/engine/__tests__/simulate.ts` plays whole games with three automated players. The balance tests fail if a content change knocks the results outside these bands:
+
+| Player | Approved | Median max price |
+|---|---|---|
+| Does nothing | 0% | $289k |
+| Clicks randomly | 14% | $305k |
+| Reads the previews (one-step lookahead) | 88% | $358k |
+
+The first measurement found two problems. First, an idle player's score drifted down because card interest compounded them past a utilization tier. Second, good play won 94% of the time because two "free cash" cards were played in nearly every run. Both are fixed; the git history has the before and after.
+
+### Project structure
+
+```
+src/
+  engine/      pure game logic and its tests (credit, mortgage, underwrite, reducer, preview, lessons, rng)
+  data/        cards, events, starting state
+  components/  stat panel, cards, event banner, action bar, previews, tooltips
+  screens/     start, game, underwriting reveal, result
+  hooks/       game context, keyboard shortcuts, change flashes
+docs/SPEC.md   rules, numbers and decisions; kept in sync with the code
+```
 
 ## What I'd Do With More Time
 
-_Coming soon._
+- **Test with real first-time buyers.** The balance is tuned against automated players and my own runs. The real question is whether a nervous buyer leaves understanding DTI. I'd watch five people play and ask them to explain their result.
+- **Show the year as a story on the result screen.** A small chart of max home price month by month, with the moves that moved it most, would make cause and effect obvious.
+- **Save progress.** Refreshing the page loses the run. Saving the game state to `localStorage` under a schema version is a small change.
+- **Habits** (planned P2): pick a lasting perk at months 4 and 8, such as "Autopay everything" or "Frugal streak", for more strategy and replay value.
+- **A Phaser layer for the underwriting reveal** (the bonus challenge): a stamp slamming down and confetti on approval. I kept the scope to a finished, tested React slice instead.
+- **Component tests** with React Testing Library for the screens. Today the tests cover the engine and the pure UI helpers (preview formatting, reveal steps, notices), not rendered components.
+- **More scenarios**: different incomes and targets, FHA-style low-down-payment loans, gift funds, and inquiries that age off.
 
 ## Known Issues
 
-_Coming soon._
+- **The lending rules are simplified for teaching** and the numbers are illustrative, not current market data. For example: one 43% DTI limit, a flat 3% for closing costs, a five-part score model, and inquiries that count for the whole year.
+- **A page refresh loses the current run** (no persistence yet).
+- **Chance cards preview their success case.** Ask for a Raise (50%) and Dispute a Report Error (40%) show their odds next to the preview. The real roll only happens when the card is played, so a preview can't leak the result, but it is optimistic by design.
+- **Max price only reflects today's cash.** Monthly savings changes show their total by month 12 next to the preview, but future rent hikes and events are not projected.
+- **Accepting the pre-approved card offer usually raises the score.** With 75% card utilization, $5,000 of extra credit outweighs the inquiry and the newer account. That is honest under the model, but it softens the "don't open credit before you apply" message. The furniture deal in months 8–12 carries that lesson more cleanly.
+- **When an overdraft can't fit on a card**, the shortfall is recorded as a missed payment and then written off rather than carried as debt. This keeps the rules simple.
+- **Browser coverage:** tested in Chromium at desktop and phone sizes, including keyboard play. It has not been tested on real iOS Safari or Firefox. On touch screens, tooltips rely on tap-to-hover.
