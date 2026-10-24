@@ -54,6 +54,8 @@ export type BorrowerProfile = {
   monthlyDebts: number
   score: number
   baseRate: number
+  /** An account opened in the last 3 months. */
+  recentCredit: boolean
 }
 
 export function borrowerProfile(state: PlayerState): BorrowerProfile {
@@ -63,6 +65,7 @@ export function borrowerProfile(state: PlayerState): BorrowerProfile {
     monthlyDebts: monthlyDebts(state),
     score: creditBreakdown(state).score,
     baseRate: state.baseRate,
+    recentCredit: state.accounts.some((a) => a.open && a.ageYears < 0.25),
   }
 }
 
@@ -92,11 +95,11 @@ export function checkPrice(profile: BorrowerProfile, price: number): PriceCheck 
 
   let downPct = cashForDown(0)
   for (let i = 0; i < DOWN_PAYMENT_ITERATIONS; i++) {
-    const rate = rateFor(profile.baseRate, profile.score, downPct)
+    const rate = rateFor(profile.baseRate, profile.score, downPct, profile.recentCredit)
     downPct = cashForDown(RESERVE_MONTHS * piti(price, downPct, rate.total).total)
   }
 
-  const rate = rateFor(profile.baseRate, profile.score, downPct)
+  const rate = rateFor(profile.baseRate, profile.score, downPct, profile.recentCredit)
   const payment = piti(price, downPct, rate.total)
   const reservesRequired = RESERVE_MONTHS * payment.total
   const ratio = (profile.monthlyDebts + payment.total) / profile.grossMonthlyIncome

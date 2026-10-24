@@ -83,6 +83,9 @@ export function revealSteps(result: UnderwritingResult, grossMonthlyIncome: numb
       detail: rate.downPayment === 0 ? 'No add-on at 20% down.' : 'Smaller down payments are riskier for the lender.',
       status: 'rate',
     },
+    ...(rate.recentCredit > 0
+      ? [{ id: 'rate-recent', title: `+ ${formatRate(rate.recentCredit)} for new credit`, detail: 'You opened an account in the last 3 months.', status: 'rate' as const }]
+      : []),
     {
       id: 'rate-total',
       title: `Your rate: ${formatRate(rate.total)}`,

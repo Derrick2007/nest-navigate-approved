@@ -70,7 +70,9 @@ function drawHand(state: PlayerState, rng: Rng): PlayerState {
     }
     hand.push(deck.shift()!)
   }
-  return { ...state, hand, deck, discard, energy: ENERGY_PER_MONTH }
+  // A side gig eats a weekend every month; skipping a big life event burns you out for one.
+  const energy = Math.max(0, ENERGY_PER_MONTH - (state.flags.sideGig ? 1 : 0) - (state.flags.burnout ? 1 : 0))
+  return { ...state, hand, deck, discard, energy, flags: { ...state.flags, burnout: false } }
 }
 
 export function startMonth(state: PlayerState): PlayerState {

@@ -69,12 +69,17 @@ export type RateBreakdown = {
   base: number
   credit: number
   downPayment: number
+  /** Added when an account was opened in the last 3 months: lenders scrutinize new credit before closing. */
+  recentCredit: number
   total: number
 }
 
 /** The rate built tier by tier, as shown on the underwriting reveal. */
-export function rateFor(baseRate: number, score: number, downPct: number): RateBreakdown {
+export const RECENT_CREDIT_ADJUSTMENT = 0.125
+
+export function rateFor(baseRate: number, score: number, downPct: number, recentCreditOpened = false): RateBreakdown {
   const credit = creditAdjustment(score)
   const downPayment = downPaymentAdjustment(downPct)
-  return { base: baseRate, credit, downPayment, total: baseRate + credit + downPayment }
+  const recentCredit = recentCreditOpened ? RECENT_CREDIT_ADJUSTMENT : 0
+  return { base: baseRate, credit, downPayment, recentCredit, total: baseRate + credit + downPayment + recentCredit }
 }

@@ -165,8 +165,9 @@ export const EVENTS: Record<EventId, EventDef> = {
       {
         id: 'skip',
         label: 'Skip it',
-        description: 'Send your love and keep the cash.',
-        apply: nothing('Skipped the wedding and kept the $800.'),
+        description: 'Keep the $800. Missing it wears on you: 1 less energy next month.',
+        apply: (state) =>
+          addLog({ ...state, flags: { ...state.flags, burnout: true } }, 'Skipped the wedding. Kept the $800, but next month you have 1 less energy.'),
       },
     ],
   },
@@ -200,30 +201,30 @@ export const EVENTS: Record<EventId, EventDef> = {
   },
   furniture_promo: {
     id: 'furniture_promo',
-    name: '0% Furniture Deal',
-    description: 'A new sofa set at 0% for 20 months. Just $120 a month!',
+    name: 'Your Bed Breaks',
+    description: 'You need a new bed and sofa: $2,400. The store offers 0% for 20 months.',
     weight: 1,
     months: [8, 12],
-    lesson: "Don't take on new credit in the months before you apply. Lenders see the payment and the inquiry.",
+    lesson: "New credit right before you apply shows up as a payment and an inquiry. Paying cash costs savings instead. Which hurts less depends on what's holding you back.",
     choices: [
       {
+        id: 'cash',
+        label: 'Pay $2,400 cash',
+        description: 'No new debt, but your down payment shrinks.',
+        apply: payCash(2_400, 'Paid $2,400 cash for furniture.'),
+      },
+      {
         id: 'finance',
-        label: 'Finance it',
-        description: 'New $120-a-month installment loan, plus a hard inquiry.',
+        label: 'Finance at 0%',
+        description: 'Keep your cash. New $120-a-month loan, plus a hard inquiry.',
         apply: (state) =>
           addLog(
             addAccount(
               { ...state, hardInquiries: state.hardInquiries + 1 },
               { kind: 'installment', name: 'Furniture Loan', ageYears: 0, balance: 2_400, monthlyPayment: 120 },
             ),
-            'Financed new furniture: $120 a month and one hard inquiry.',
+            'Financed furniture: $120 a month and one hard inquiry.',
           ),
-      },
-      {
-        id: 'pass',
-        label: 'Pass',
-        description: 'The old couch has a few more years in it.',
-        apply: nothing('Passed on the furniture deal.'),
       },
     ],
   },

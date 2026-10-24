@@ -102,6 +102,8 @@ Accounts:
 
 With these numbers the starting score is **656** and a player who does nothing qualifies for roughly **$278k**, short of the $325k target. Good play reaches $310k–$365k. Closing the oldest card drops the score to about **618**, below the 620 gate. These outcomes are intentional; keep them when tuning.
 
+**Dilemmas.** An audit found 3 of 5 choice events had a free best answer and 11 of 20 cards had no cost but energy. Fixes: the new-credit rules above (so a new card is worth it at 75% utilization but not after paying down), skipping the wedding costs 1 energy next month, the furniture event (now "Your Bed Breaks") is cash vs 0% financing with no free pass, Side Gig costs 1 energy every month after, and Request Limit Increase takes a hard inquiry. `dilemmas.test.ts` fails if any event choice is all upside in every tested situation.
+
 **Balance.** `src/engine/__tests__/balance.test.ts` plays 100 seeds per strategy and locks these bands in (`BALANCE_REPORT=1 npm test` prints the table). Measured after adding the draft and sliders:
 
 | Strategy | Approved | Median max price | Band enforced |
@@ -125,7 +127,7 @@ paymentHistory = max(0, 192 × (1 − 0.15 × missedPayments))     // ~35%
 utilization u  = sum(revolving balances) / sum(revolving limits), open cards only
 utilizationPts = u ≤ 10% → 165 | ≤ 30% → 140 | ≤ 50% → 100 | ≤ 75% → 60 | else 30   // ~30%
 agePts         = min(82, averageAgeOfOpenAccounts × 8)          // ~15%
-newCreditPts   = max(0, 55 − 15 × hardInquiries)                // ~10%
+newCreditPts   = max(0, 55 − 15 × hardInquiries − 10 × accountsOpenedInLastYear)   // ~10%
 mixPts         = has open revolving AND open installment → 55, else 30   // ~10%
 ```
 
@@ -159,6 +161,8 @@ creditAdj: ≥760 → 0 | 740–759 → 0.125 | 720–739 → 0.25 | 700–719 �
            680–699 → 0.5 | 660–679 → 0.75 | 640–659 → 1.0 | 620–639 → 1.25
 downAdj:   ≥20% → 0 | 10–19.99% → 0.125 | 3–9.99% → 0.25
 ```
+
+**New-credit rate add-on:** +0.125% if any open account is under 3 months old at application (lenders scrutinize new credit before closing).
 
 ### 6.5 Underwriting
 

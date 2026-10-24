@@ -25,7 +25,7 @@ Requires Node.js 20.19+ (developed on Node 26).
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 110 tests: engine, previews, lessons, balance simulations
+npm test         # 121 tests: engine, previews, lessons, balance simulations
 npm run build    # type-check and production build
 npm run lint     # oxlint
 ```
@@ -47,7 +47,7 @@ A four-page intro explains the game before you can start. Then each month you ge
 - **Seeded RNG (mulberry32).** The generator's state lives in game state, so the reducer stays pure, "Replay this year" replays the same events, draws and draft offers, and tests are deterministic.
 - **CSS Modules + design tokens**, no UI library. The look is small and custom, and the bundle stays at about 87 kB gzipped.
 - **Phaser 3 for the verdict (the bonus challenge).** At the end of the underwriting reveal, a rubber stamp (APPROVED / APPROVED FOR LESS / DENIED) slams down with a camera shake and an ink spatter, and a full approval fires confetti. React keeps all the game state; Phaser only draws (`src/phaser/stampGame.ts`). It is **lazy-loaded**: Phaser's ~320 kB gzipped chunk is fetched while the reveal lines play, so the first page load doesn't pay for it. The game is destroyed when the reveal unmounts, and under `prefers-reduced-motion` or a failed load it falls back to a static CSS stamp (`components/ApprovalStamp.tsx`).
-- **Vitest** for 110 tests: every formula and card, reducer edge cases (event blocking, overdrafts, missed payments), same-seed determinism, 200 random runs checking state invariants, and balance tests (below).
+- **Vitest** for 121 tests: every formula and card, reducer edge cases (event blocking, overdrafts, missed payments), same-seed determinism, 200 random runs checking state invariants, and balance tests (below).
 - **Vercel**, deployed from GitHub on every push to `main`.
 
 ### Balance, measured instead of guessed
@@ -56,11 +56,13 @@ A four-page intro explains the game before you can start. Then each month you ge
 
 | Player | Approved | Median max price |
 |---|---|---|
-| Does nothing | 0% | $285k |
-| Clicks randomly | 27% | $314k |
-| Reads the previews (one-step lookahead, tries slider amounts at the tier lines) | 90% | $360k |
+| Does nothing | 0% | $284k |
+| Clicks randomly | 16% | $296k |
+| Reads the previews (one-step lookahead, tries slider amounts at the tier lines) | 90% | $352k |
 
 The first measurement found two problems. First, an idle player's score drifted down because card interest compounded them past a utilization tier. Second, good play won 94% of the time because two "free cash" cards were played in nearly every run. Adding the draft and sliders later pushed good play to 100% approved, so the starting deck got leaner and monthly savings dropped from $700 to $550. Both rounds are in the git history with before and after numbers.
+
+**Every choice is a dilemma.** A later audit found several choices with no downside (accepting a pre-approved card was all upside). New accounts now cost score points and a rate add-on near application, life choices cost energy, and `dilemmas.test.ts` fails if an event choice is free in every situation.
 
 ### Project structure
 

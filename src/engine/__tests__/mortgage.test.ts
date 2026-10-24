@@ -59,6 +59,6 @@ describe('rate tiers', () => {
   })
 
   it('builds the rate as base + credit + down payment', () => {
-    expect(rateFor(6.25, 656, 0.05)).toEqual({ base: 6.25, credit: 1.0, downPayment: 0.25, total: 7.5 })
+    expect(rateFor(6.25, 656, 0.05)).toEqual({ base: 6.25, credit: 1.0, downPayment: 0.25, recentCredit: 0, total: 7.5 })
   })
 })

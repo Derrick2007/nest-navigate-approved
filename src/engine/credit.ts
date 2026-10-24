@@ -64,7 +64,9 @@ export function creditBreakdown(state: PlayerState): CreditBreakdown {
   const paymentHistory = Math.max(0, 192 * (1 - 0.15 * state.missedPayments))
   const utilizationPts = utilizationPoints(utilization(state))
   const age = Math.min(82, averageAccountAge(state) * 8)
-  const newCredit = Math.max(0, 55 - 15 * state.hardInquiries)
+  // Like FICO, new credit counts inquiries and accounts opened in the last year.
+  const recentAccounts = open.filter((a) => a.ageYears < 1).length
+  const newCredit = Math.max(0, 55 - 15 * state.hardInquiries - 10 * recentAccounts)
   const mix = hasRevolving && hasInstallment ? 55 : 30
 
   const raw = BASE_SCORE + paymentHistory + utilizationPts + age + newCredit + mix

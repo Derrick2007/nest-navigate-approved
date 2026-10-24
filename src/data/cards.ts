@@ -165,11 +165,11 @@ export const CARDS: Record<CardId, CardDef> = {
     cost: 1,
     copies: 1,
     once: true,
-    description: 'Earn an extra $400 a month delivering on weekends.',
+    description: 'Earn $400 a month delivering on weekends. It costs 1 energy every month after.',
     lesson: 'Lenders usually want about 2 years of history before they count new side income.',
     play: (state) =>
       addLog(
-        { ...state, unverifiedIncome: state.unverifiedIncome + 400 },
+        { ...state, unverifiedIncome: state.unverifiedIncome + 400, flags: { ...state.flags, sideGig: true } },
         "Started a side gig: +$400 a month in cash. A lender won't count it yet.",
       ),
   },
@@ -197,14 +197,14 @@ export const CARDS: Record<CardId, CardDef> = {
     cost: 1,
     copies: 1,
     once: true,
-    description: 'Ask for $3,000 more credit on Old Faithful Visa.',
+    description: 'Ask for $3,000 more credit on Old Faithful Visa. The issuer does a hard inquiry.',
     lesson: 'More available credit lowers utilization without paying anything.',
     unavailable: needsOpen('old_faithful', 'Old Faithful Visa'),
     play: (state) => {
       const card = findAccount(state, 'old_faithful')!
       return addLog(
-        updateAccount(state, card.id, { limit: (card.limit ?? 0) + 3_000 }),
-        'Old Faithful Visa limit raised by $3,000.',
+        updateAccount({ ...state, hardInquiries: state.hardInquiries + 1 }, card.id, { limit: (card.limit ?? 0) + 3_000 }),
+        'Old Faithful Visa limit raised by $3,000, after a hard inquiry.',
       )
     },
   },
