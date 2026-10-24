@@ -164,14 +164,16 @@ export function endMonth(state: PlayerState): PlayerState {
 export type GameState =
   | { phase: 'start' }
   | { phase: 'playing'; player: PlayerState }
-  // The underwriting result is derived from `player` by underwrite(), never stored.
-  | { phase: 'finished'; player: PlayerState }
+  // After month 12: the step-by-step reveal, then the result. The underwriting
+  // result is derived from `player` by underwrite(), never stored.
+  | { phase: 'underwriting' | 'result'; player: PlayerState }
 
 export type GameAction =
   | { type: 'START'; seed: number }
   | { type: 'RESOLVE_EVENT'; choiceId: string }
   | { type: 'PLAY_CARD'; handIndex: number }
   | { type: 'END_MONTH' }
+  | { type: 'SHOW_RESULT' }
   | { type: 'RESTART' }
 
 export const initialGameState: GameState = { phase: 'start' }
@@ -182,6 +184,8 @@ export function gameReducer(game: GameState, action: GameAction): GameState {
       return { phase: 'playing', player: newRun(action.seed) }
     case 'RESTART':
       return initialGameState
+    case 'SHOW_RESULT':
+      return game.phase === 'underwriting' ? { phase: 'result', player: game.player } : game
   }
 
   if (game.phase !== 'playing') return game
@@ -195,7 +199,7 @@ export function gameReducer(game: GameState, action: GameAction): GameState {
     case 'END_MONTH': {
       if (awaitingEventChoice(player)) return game
       const ended = endMonth(player)
-      if (ended.month >= MONTHS) return { phase: 'finished', player: ended }
+      if (ended.month >= MONTHS) return { phase: 'underwriting', player: ended }
       return { phase: 'playing', player: startMonth({ ...ended, month: ended.month + 1 }) }
     }
   }

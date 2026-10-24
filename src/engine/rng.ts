@@ -28,6 +28,11 @@ export function createRng(initialState: number): Rng {
   }
 }
 
+/** A fresh seed for a new run. Called from the UI only, never inside the reducer. */
+export function randomSeed(): number {
+  return Math.floor(Math.random() * 2 ** 31)
+}
+
 export function chance(rng: Rng, probability: number): boolean {
   return rng.next() < probability
 }

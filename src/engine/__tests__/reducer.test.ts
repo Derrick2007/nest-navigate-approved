@@ -182,7 +182,7 @@ describe('a full run', () => {
   it('finishes after month 12 and can be underwritten', () => {
     const history = playThrough(99)
     const last = history.at(-1)!
-    expect(last.phase).toBe('finished')
+    expect(last.phase).toBe('underwriting')
     const player = finalPlayer(history)
     expect(player.month).toBe(12)
     expect(['APPROVED', 'APPROVED_SMALLER', 'DENIED']).toContain(underwrite(player).outcome)
@@ -192,6 +192,14 @@ describe('a full run', () => {
     const last = playThrough(99).at(-1)!
     expect(gameReducer(last, { type: 'END_MONTH' })).toBe(last)
     expect(gameReducer(last, { type: 'RESTART' })).toEqual({ phase: 'start' })
+  })
+
+  it('moves from the underwriting reveal to the result', () => {
+    const last = playThrough(99).at(-1)!
+    const result = gameReducer(last, { type: 'SHOW_RESULT' })
+    expect(result.phase).toBe('result')
+    // Only the reveal can advance to the result.
+    expect(gameReducer(result, { type: 'SHOW_RESULT' })).toBe(result)
   })
 
   it('keeps the state sane across many random runs', () => {
@@ -210,7 +218,7 @@ describe('a full run', () => {
         const removed = Object.values(CARDS).filter((c) => c.once && p.flags[`card:${c.id}`]).length
         expect(p.deck.length + p.hand.length + p.discard.length + removed).toBe(totalCards)
       }
-      expect(history.at(-1)!.phase).toBe('finished')
+      expect(history.at(-1)!.phase).toBe('underwriting')
     }
   })
 })
