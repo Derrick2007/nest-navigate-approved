@@ -4,7 +4,6 @@ import {
   addLog,
   findAccount,
   isOpen,
-  openCards,
   payDownCards,
   totalCardBalance,
   updateAccount,
@@ -20,7 +19,10 @@ export type CardDef = {
   id: CardId
   name: string
   cost: 1 | 2
-  copies: 1 | 2
+  /** Copies in the starting deck. 0 means the card only appears in the monthly draft. */
+  copies: 0 | 1 | 2
+  /** How often the draft offers it, relative to other cards. 0 means never. Defaults to 1. */
+  draftWeight?: number
   /** Removed from the game after being played instead of going to the discard pile. */
   once: boolean
   /** Chance of success for cards with a random outcome. Previews show the success case. */
@@ -30,6 +32,19 @@ export type CardDef = {
   lesson?: string
   /** Why the card can't be played right now, or null if it can. */
   unavailable?: (state: PlayerState) => string | null
+  /**
+   * Cards the player sizes with a slider. The reducer clamps the chosen amount
+   * to [min, max] in steps, and to `limit` (what the player can put in now).
+   */
+  amount?: {
+    min: number
+    max: number
+    step: number
+    initial: number
+    limit: (state: PlayerState) => number
+    /** Mark where card utilization crosses 30% and 10% on the slider. */
+    utilizationMarks?: boolean
+  }
   play: Effect
 }
 
@@ -48,25 +63,31 @@ const needsCardBalance = (state: PlayerState) =>
 const first = (...checks: ((state: PlayerState) => string | null)[]) => (state: PlayerState) =>
   checks.reduce<string | null>((reason, check) => reason ?? check(state), null)
 
+// Draft-only cards are offered a little more often than starting cards, so new ideas show up.
+const DRAFT_ONLY = { copies: 0, draftWeight: 1.5 } as const
+
 export const CARDS: Record<CardId, CardDef> = {
-  pay_card_1k: {
-    id: 'pay_card_1k',
-    name: 'Pay Down a Card',
+  pay_cards: {
+    id: 'pay_cards',
+    name: 'Pay Down Cards',
     cost: 1,
     copies: 2,
     once: false,
-    description: 'Put $1,000 toward the card with the highest utilization.',
+    description: 'Choose how much to put toward your card balances.',
     lesson: 'Utilization is about 30% of your score and it updates every month.',
-    unavailable: first(needsCardBalance, needsCash(1_000)),
-    play: (state) => {
-      const card = [...openCards(state)].sort(
-        (a, b) => b.balance / (b.limit ?? 1) - a.balance / (a.limit ?? 1),
-      )[0]
-      const paid = Math.min(1_000, card.balance)
-      return addLog(
-        updateAccount({ ...state, cash: state.cash - paid }, card.id, { balance: card.balance - paid }),
-        `Paid ${formatMoney(paid)} off ${card.name}.`,
-      )
+    unavailable: first(needsCardBalance, needsCash(100)),
+    amount: {
+      min: 100,
+      max: 2_000,
+      step: 100,
+      initial: 1_000,
+      limit: (state) => Math.min(state.cash, totalCardBalance(state)),
+      utilizationMarks: true,
+    },
+    play: (state, _rng, amount = 1_000) => {
+      const after = payDownCards(state, amount)
+      const pct = Math.round(utilization(after) * 100)
+      return addLog(after, `Paid ${formatMoney(state.cash - after.cash)} off your cards. Utilization is now ${pct}%.`)
     },
   },
   balance_blitz: {
@@ -75,13 +96,21 @@ export const CARDS: Record<CardId, CardDef> = {
     cost: 2,
     copies: 1,
     once: false,
-    description: 'Throw $2,500 at your card balances, split across every card.',
+    description: 'Go big on your card balances, split across every card.',
     lesson: 'Getting under 30% utilization, then under 10%, unlocks big score jumps.',
-    unavailable: first(needsCardBalance, needsCash(2_500)),
-    play: (state) => {
-      const after = payDownCards(state, 2_500)
+    unavailable: first(needsCardBalance, needsCash(1_000)),
+    amount: {
+      min: 1_000,
+      max: 5_000,
+      step: 100,
+      initial: 2_500,
+      limit: (state) => Math.min(state.cash, totalCardBalance(state)),
+      utilizationMarks: true,
+    },
+    play: (state, _rng, amount = 2_500) => {
+      const after = payDownCards(state, amount)
       const pct = Math.round(utilization(after) * 100)
-      return addLog(after, `Blitzed your card balances. Utilization is now ${pct}%.`)
+      return addLog(after, `Blitzed ${formatMoney(state.cash - after.cash)} into your cards. Utilization is now ${pct}%.`)
     },
   },
   extra_car: {
@@ -90,12 +119,19 @@ export const CARDS: Record<CardId, CardDef> = {
     cost: 1,
     copies: 1,
     once: false,
-    description: 'Pay an extra $1,500 toward the car loan.',
+    description: 'Choose how much extra to pay on the car loan.',
     lesson: "Lowering a loan balance doesn't lower your DTI. Lenders count the monthly payment.",
-    unavailable: first(needsOpen('car', 'The car loan'), needsCash(1_500)),
-    play: (state) => {
+    unavailable: first(needsOpen('car', 'The car loan'), needsCash(500)),
+    amount: {
+      min: 500,
+      max: 3_000,
+      step: 100,
+      initial: 1_500,
+      limit: (state) => Math.min(state.cash, findAccount(state, 'car')?.balance ?? 0),
+    },
+    play: (state, _rng, amount = 1_500) => {
       const car = findAccount(state, 'car')!
-      const paid = Math.min(1_500, car.balance)
+      const paid = Math.min(amount, car.balance)
       return addLog(
         updateAccount({ ...state, cash: state.cash - paid }, 'car', { balance: car.balance - paid }),
         `Paid an extra ${formatMoney(paid)} on the car. The monthly payment is still the same.`,
@@ -212,7 +248,7 @@ export const CARDS: Record<CardId, CardDef> = {
     id: 'meal_prep',
     name: 'Meal Prep Month',
     cost: 1,
-    copies: 2,
+    copies: 1,
     once: false,
     description: 'Cook at home all month and save $400.',
     lesson: 'Cash covers your down payment, closing costs and the reserves a lender wants to see.',
@@ -222,7 +258,7 @@ export const CARDS: Record<CardId, CardDef> = {
     id: 'sell_stuff',
     name: 'Sell Unused Stuff',
     cost: 2,
-    copies: 1,
+    copies: 0, // offered in the draft
     once: false,
     description: 'Sell the bike, the old console and the bread maker for $600.',
     play: (state) => addLog({ ...state, cash: state.cash + 600 }, 'Sold unused stuff: +$600.'),
@@ -298,6 +334,83 @@ export const CARDS: Record<CardId, CardDef> = {
         `Consolidated ${formatMoney(balance)} into a personal loan at ${formatMoney(balance * 0.04)} a month.`,
       )
     },
+  },
+
+  // Draft-only cards: each brings in an idea the starting deck doesn't teach.
+  gift_funds: {
+    id: 'gift_funds',
+    name: 'Family Gift Letter',
+    cost: 1,
+    ...DRAFT_ONLY,
+    once: true,
+    description: 'Your parents chip in $2,000 and sign a gift letter for the lender.',
+    lesson: 'Gift money can go toward a down payment if it is documented with a gift letter.',
+    play: (state) => addLog({ ...state, cash: state.cash + 2_000 }, 'Family gift: +$2,000, documented with a gift letter.'),
+  },
+  balance_transfer: {
+    id: 'balance_transfer',
+    name: '0% Balance Transfer',
+    cost: 1,
+    ...DRAFT_ONLY,
+    once: true,
+    description: 'Move every card balance to a new $6,000 card at 0% for the rest of the year. 3% fee, one hard inquiry.',
+    lesson: 'A 0% transfer stops interest and adds available credit, but it costs a fee, an inquiry and a new account.',
+    unavailable: needsCardBalance,
+    play: (state) => {
+      const moved = totalCardBalance(state)
+      const fee = moved * 0.03
+      const cleared: PlayerState = {
+        ...state,
+        cash: state.cash - fee,
+        hardInquiries: state.hardInquiries + 1,
+        accounts: state.accounts.map((a) => (a.open && a.kind === 'revolving' ? { ...a, balance: 0 } : a)),
+      }
+      return addLog(
+        addAccount(cleared, {
+          kind: 'revolving',
+          name: 'Balance Transfer Card',
+          ageYears: 0,
+          balance: moved,
+          limit: 6_000,
+          interestRate: 0,
+        }),
+        `Moved ${formatMoney(moved)} to a 0% card for a ${formatMoney(fee)} fee.`,
+      )
+    },
+  },
+  overtime: {
+    id: 'overtime',
+    name: 'Pick Up Overtime',
+    cost: 2,
+    ...DRAFT_ONLY,
+    once: false,
+    description: 'Work extra shifts this month for $800.',
+    lesson: 'Overtime adds cash, but lenders usually want about two years of it before they count it as income.',
+    play: (state) => addLog({ ...state, cash: state.cash + 800 }, 'Picked up overtime: +$800 cash, not counted as income.'),
+  },
+  negotiate_apr: {
+    id: 'negotiate_apr',
+    name: 'Call to Lower Your APR',
+    cost: 1,
+    ...DRAFT_ONLY,
+    once: true,
+    description: 'Ask your card issuers for a lower rate. Card interest drops from 2% to 1% a month.',
+    lesson: "Card interest is a cost you can negotiate. Asking is free and doesn't touch your credit score.",
+    unavailable: (state) => (state.flags.lowerApr ? 'Your rate is already lowered' : null),
+    play: (state) =>
+      addLog({ ...state, flags: { ...state.flags, lowerApr: true } }, 'Your card issuers cut your rate in half.'),
+  },
+  income_driven: {
+    id: 'income_driven',
+    name: 'Income-Driven Student Loan Plan',
+    cost: 1,
+    ...DRAFT_ONLY,
+    once: true,
+    description: 'Switch your student loan to an income-driven plan. The payment drops from $250 to $150.',
+    lesson: 'Lenders count the payment on your credit report, so a lower required payment can lower DTI. Rules vary by loan type.',
+    unavailable: needsOpen('student', 'The student loan'),
+    play: (state) =>
+      addLog(updateAccount(state, 'student', { monthlyPayment: 150 }), 'Student loan payment cut to $150 a month.'),
   },
 }
 

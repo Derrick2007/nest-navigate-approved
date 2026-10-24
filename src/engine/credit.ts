@@ -34,6 +34,17 @@ export function utilization(state: PlayerState): number {
   return limit === 0 ? 0 : balance / limit
 }
 
+/**
+ * How much to pay down, spread across open cards, to bring utilization to
+ * `ratio`. Used to mark the 30% and 10% lines on payment sliders.
+ */
+export function paydownToReach(state: PlayerState, ratio: number): number {
+  const cards = state.accounts.filter((a) => a.open && a.kind === 'revolving')
+  const balance = cards.reduce((sum, a) => sum + a.balance, 0)
+  const limit = cards.reduce((sum, a) => sum + (a.limit ?? 0), 0)
+  return Math.max(0, balance - ratio * limit)
+}
+
 export function utilizationPoints(ratio: number): number {
   const tier = UTILIZATION_TIERS.find((t) => ratio <= t.maxRatio)
   return tier ? tier.points : UTILIZATION_FLOOR_POINTS

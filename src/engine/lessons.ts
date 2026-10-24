@@ -34,7 +34,7 @@ const CANDIDATES: ((state: PlayerState) => Lesson | null)[] = [
   (s) => (chose(s, 'furniture_promo', 'finance') ? fromEvent('furniture_promo') : null),
   (s) => {
     if (played(s, 'balance_blitz')) return fromCard('balance_blitz')
-    if (played(s, 'pay_card_1k')) return fromCard('pay_card_1k')
+    if (played(s, 'pay_cards')) return fromCard('pay_cards')
     // Never touched the cards but finished with high utilization: still worth saying.
     const ratio = utilization(s)
     if (ratio > 0.3) {

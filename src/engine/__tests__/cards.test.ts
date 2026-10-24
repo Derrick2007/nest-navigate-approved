@@ -7,11 +7,12 @@ import { dti, monthlyDebts, underwrite } from '../underwrite'
 import { applyCard, payOffCar, startState } from './helpers'
 
 describe('deck', () => {
-  it('has two copies of the ×2 cards and one of everything else', () => {
+  it('starts with the copies each card lists, and no draft-only cards', () => {
     const deck = buildDeck()
-    expect(deck).toHaveLength(17)
-    expect(deck.filter((id) => id === 'pay_card_1k')).toHaveLength(2)
-    expect(deck.filter((id) => id === 'meal_prep')).toHaveLength(2)
+    expect(deck).toHaveLength(15)
+    expect(deck.filter((id) => id === 'pay_cards')).toHaveLength(2)
+    expect(deck).not.toContain('gift_funds')
+    expect(deck).not.toContain('sell_stuff')
   })
 })
 
@@ -23,7 +24,7 @@ describe('card effects', () => {
     expect(underwrite(after).maxPrice).toBe(underwrite(before).maxPrice)
     // Next paycheck: surplus plus the $400 the lender won't count.
     const paid = payday(after)
-    expect(paid.cash).toBe(before.cash + 700 + 400)
+    expect(paid.cash).toBe(before.cash + 550 + 400)
   })
 
   it('pay off the car removes its payment and then becomes unavailable', () => {
@@ -40,11 +41,12 @@ describe('card effects', () => {
     expect(monthlyDebts(after)).toBe(monthlyDebts(startState()))
   })
 
-  it('pay down a card targets the highest-utilization card', () => {
-    // Old Faithful is at 83%, the Rewards Card at 67%.
-    const after = applyCard(startState(), 'pay_card_1k')
-    expect(findAccount(after, 'old_faithful')?.balance).toBe(1_500)
-    expect(findAccount(after, 'rewards')?.balance).toBe(2_000)
+  it('pay down cards splits the payment in proportion to each balance', () => {
+    // $1,000 against $2,500 and $2,000 balances.
+    const after = applyCard(startState(), 'pay_cards')
+    expect(findAccount(after, 'old_faithful')?.balance).toBeCloseTo(2_500 - (1_000 * 2_500) / 4_500)
+    expect(findAccount(after, 'rewards')?.balance).toBeCloseTo(2_000 - (1_000 * 2_000) / 4_500)
+    expect(after.cash).toBe(startState().cash - 1_000)
   })
 
   it('balance blitz splits $2,500 across cards in proportion to balance', () => {
@@ -86,7 +88,7 @@ describe('card effects', () => {
 
   it('cards that cost cash are unavailable without it', () => {
     const broke = { ...startState(), cash: 500 }
-    expect(CARDS.pay_card_1k.unavailable?.(broke)).toMatch(/cash/)
+    expect(CARDS.pay_cards.unavailable?.({ ...broke, cash: 50 })).toMatch(/cash/)
     expect(CARDS.cheaper_place.unavailable?.(broke)).toMatch(/cash/)
   })
 })

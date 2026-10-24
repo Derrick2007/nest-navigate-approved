@@ -8,7 +8,7 @@ export function createInitialState(seed: number): PlayerState {
     cash: 22_000,
     grossMonthlyIncome: 7_500,
     unverifiedIncome: 0,
-    monthlySurplus: 700,
+    monthlySurplus: 550,
     accounts: [
       { id: 'old_faithful', kind: 'revolving', name: 'Old Faithful Visa', ageYears: 8, balance: 2_500, limit: 3_000, open: true },
       { id: 'rewards', kind: 'revolving', name: 'Rewards Card', ageYears: 2, balance: 2_000, limit: 3_000, open: true },
@@ -26,6 +26,7 @@ export function createInitialState(seed: number): PlayerState {
     deck: [],
     discard: [],
     event: null,
+    draftOffer: [],
     log: [],
     seed,
     rngState: seed,

@@ -1,7 +1,8 @@
 import { CARDS } from '../data/cards'
+import { resolveAmount } from './amounts'
 import type { EventChoice } from '../data/events'
 import { creditScore, utilization } from './credit'
-import { endMonth } from './reducer'
+import { endMonth, monthlyCardInterest } from './reducer'
 import type { Rng } from './rng'
 import type { CardId, PlayerState } from './types'
 import { monthlyDebts, underwrite } from './underwrite'
@@ -23,7 +24,9 @@ export function snapshot(state: PlayerState): StatSnapshot {
     dti: monthlyDebts(state) / state.grossMonthlyIncome,
     utilization: utilization(state),
     cash: state.cash,
-    monthlySavings: state.monthlySurplus + state.unverifiedIncome,
+    // What actually lands in cash each month: card interest comes out of it, so
+    // paying down cards or cutting the APR shows up here as a monthly gain.
+    monthlySavings: state.monthlySurplus + state.unverifiedIncome - monthlyCardInterest(state),
   }
 }
 
@@ -75,8 +78,10 @@ export function diffSnapshots(before: StatSnapshot, after: StatSnapshot): Delta[
 // the real roll still happens on play, so the preview never leaks the outcome.
 const successRng: Rng = { next: () => 0, state: 0 }
 
-export function previewCard(state: PlayerState, cardId: CardId, base = snapshot(state)): Delta[] {
-  return diffSnapshots(base, snapshot(CARDS[cardId].play(state, successRng)))
+/** For slider cards, pass the amount on the slider; it's snapped exactly as playing would. */
+export function previewCard(state: PlayerState, cardId: CardId, base = snapshot(state), amount?: number): Delta[] {
+  const card = CARDS[cardId]
+  return diffSnapshots(base, snapshot(card.play(state, successRng, resolveAmount(card, state, amount))))
 }
 
 export function previewChoice(state: PlayerState, choice: EventChoice, base = snapshot(state)): Delta[] {

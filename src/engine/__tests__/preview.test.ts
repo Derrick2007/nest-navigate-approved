@@ -8,8 +8,8 @@ const find = (deltas: Delta[], stat: Delta['stat']) => deltas.find((d) => d.stat
 describe('preview', () => {
   it('matches what actually happens when the card is played', () => {
     const state = startState()
-    const deltas = previewCard(state, 'pay_card_1k')
-    const after = snapshot(applyCard(state, 'pay_card_1k'))
+    const deltas = previewCard(state, 'pay_cards')
+    const after = snapshot(applyCard(state, 'pay_cards'))
     for (const delta of deltas) expect(delta.after).toBe(after[delta.stat])
   })
 
@@ -23,7 +23,7 @@ describe('preview', () => {
 
   it('shows no score change when a payment stays inside a utilization band', () => {
     // $1,000 only takes utilization from 75% to 58%: same 50–75% band.
-    expect(find(previewCard(startState(), 'pay_card_1k'), 'score')).toBeUndefined()
+    expect(find(previewCard(startState(), 'pay_cards'), 'score')).toBeUndefined()
   })
 
   it('shows the side gig adding savings without moving max price', () => {

@@ -21,7 +21,7 @@ import type { PlayerState } from '../types'
 import { underwrite } from '../underwrite'
 import { startState } from './helpers'
 
-/** Drive a whole run with a simple policy: pick a choice, play what you can, end the month. */
+/** Drive a whole run with a simple policy: pick a choice, play what you can, end the month, take a draft card. */
 function playThrough(seed: number, pick: (options: number) => number = () => 0): GameState[] {
   const history: GameState[] = []
   let game = gameReducer({ phase: 'start' }, { type: 'START', seed })
@@ -29,8 +29,12 @@ function playThrough(seed: number, pick: (options: number) => number = () => 0):
     game = gameReducer(game, action)
     history.push(game)
   }
-  while (game.phase === 'playing') {
+  while (game.phase === 'playing' || game.phase === 'draft') {
     const { player } = game
+    if (game.phase === 'draft') {
+      step({ type: 'DRAFT_PICK', cardId: player.draftOffer[pick(player.draftOffer.length)] })
+      continue
+    }
     if (awaitingEventChoice(player)) {
       const choices = EVENTS[player.event!.eventId].choices!
       step({ type: 'RESOLVE_EVENT', choiceId: choices[pick(choices.length)].id })
@@ -60,7 +64,7 @@ describe('a new run', () => {
 
   it('pays the monthly surplus and ages every account by a month', () => {
     const paid = payday(startState())
-    expect(paid.cash).toBe(22_000 + 700)
+    expect(paid.cash).toBe(22_000 + 550)
     expect(findAccount(paid, 'old_faithful')?.ageYears).toBeCloseTo(8 + 1 / 12)
   })
 })
@@ -217,9 +221,10 @@ describe('a full run', () => {
         expect(p.cash).toBeGreaterThanOrEqual(-100_000)
         expect(p.energy).toBeGreaterThanOrEqual(0)
         expect(p.hand.length).toBeLessThanOrEqual(HAND_SIZE)
-        // Every card is in the deck, hand or discard, or was a once card that got played.
+        // Every card (starting or drafted) is in the deck, hand or discard, or was a once card that got played.
         const removed = Object.values(CARDS).filter((c) => c.once && p.flags[`card:${c.id}`]).length
-        expect(p.deck.length + p.hand.length + p.discard.length + removed).toBe(totalCards)
+        const drafted = p.log.filter((e) => e.text.startsWith('Added ')).length
+        expect(p.deck.length + p.hand.length + p.discard.length + removed).toBe(totalCards + drafted)
       }
       expect(history.at(-1)!.phase).toBe('underwriting')
     }

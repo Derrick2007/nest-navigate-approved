@@ -1,6 +1,8 @@
 import { buildDeck, CARDS } from '../data/cards'
 import { ALL_EVENTS, EVENTS } from '../data/events'
 import { createInitialState } from '../data/initialState'
+import { amountRange, resolveAmount } from './amounts'
+import { drawDraftOffer, takeDraft } from './draft'
 import { addLog, chargeToCard } from './effects'
 import { formatMoney } from './format'
 import { createRng, pickWeighted, shuffle, type Rng } from './rng'
@@ -16,6 +18,7 @@ export const MONTHS = 12
 export const HAND_SIZE = 5
 export const ENERGY_PER_MONTH = 3
 const CARD_INTEREST_MONTHLY = 0.02 // 24% APR
+const LOWER_CARD_INTEREST_MONTHLY = 0.01 // after "Call to Lower Your APR"
 const INSTALLMENT_PRINCIPAL_SHARE = 0.6 // simplified: 60% of each payment reduces the balance
 
 /** Run `step` with an Rng built from the state, then save the generator's new position. */
@@ -101,13 +104,20 @@ export function cardUnavailableReason(state: PlayerState, cardId: CardId): strin
   const card = CARDS[cardId]
   if (awaitingEventChoice(state)) return 'Deal with this month’s event first'
   if (card.cost > state.energy) return 'Not enough energy left this month'
-  return card.unavailable?.(state) ?? null
+  const own = card.unavailable?.(state) ?? null
+  if (own) return own
+  // A slider card also needs at least its smallest step to be affordable.
+  if (card.amount && !amountRange(card, state)) return 'Not enough to make the smallest payment'
+  return null
 }
 
-export function playCard(state: PlayerState, handIndex: number): PlayerState {
+/** Play the card at `handIndex`. For slider cards, `amount` is snapped to a legal value first. */
+export function playCard(state: PlayerState, handIndex: number, amount?: number): PlayerState {
   const cardId = state.hand[handIndex]
   if (cardId === undefined || cardUnavailableReason(state, cardId) !== null) return state
   const card = CARDS[cardId]
+  // Resolved against the state before paying, so the cash check is the one the player saw.
+  const chosen = resolveAmount(card, state, amount)
   const paid: PlayerState = {
     ...setFlag(state, `card:${cardId}`),
     energy: state.energy - card.cost,
@@ -115,19 +125,25 @@ export function playCard(state: PlayerState, handIndex: number): PlayerState {
     // "Once" cards leave the game instead of going to the discard pile.
     discard: card.once ? state.discard : [...state.discard, cardId],
   }
-  return withRng(paid, card.play)
+  return withRng(paid, (s, rng) => card.play(s, rng, chosen))
 }
 
 // ---------------------------------------------------------------------------
 // End of month: interest, loan paydown, overdraft.
 
+/** This month's card interest at current balances (0% cards excluded, lowered APR applied). */
+export function monthlyCardInterest(state: PlayerState): number {
+  const standard = state.flags.lowerApr ? LOWER_CARD_INTEREST_MONTHLY : CARD_INTEREST_MONTHLY
+  return state.accounts
+    .filter((a) => a.open && a.kind === 'revolving')
+    .reduce((sum, a) => sum + a.balance * (a.interestRate ?? standard), 0)
+}
+
 function accrueInterest(state: PlayerState): PlayerState {
   // Card interest is paid from cash, as if the minimum payment covers it, so
   // balances hold steady. Carrying a balance costs money every month instead
   // of silently compounding the player past a utilization tier.
-  const interest = state.accounts
-    .filter((a) => a.open && a.kind === 'revolving')
-    .reduce((sum, a) => sum + a.balance * CARD_INTEREST_MONTHLY, 0)
+  const interest = monthlyCardInterest(state)
   const accounts = state.accounts.map((a) => {
     if (!a.open || a.kind === 'revolving') return a
     const balance = Math.max(0, a.balance - INSTALLMENT_PRINCIPAL_SHARE * (a.monthlyPayment ?? 0))
@@ -165,6 +181,8 @@ export function endMonth(state: PlayerState): PlayerState {
 export type GameState =
   | { phase: 'start' }
   | { phase: 'playing'; player: PlayerState }
+  // Between months: pick one of player.draftOffer to add to the deck.
+  | { phase: 'draft'; player: PlayerState }
   // After month 12: the step-by-step reveal, then the result. The underwriting
   // result is derived from `player` by underwrite(), never stored.
   | { phase: 'underwriting' | 'result'; player: PlayerState }
@@ -172,8 +190,9 @@ export type GameState =
 export type GameAction =
   | { type: 'START'; seed: number }
   | { type: 'RESOLVE_EVENT'; choiceId: string }
-  | { type: 'PLAY_CARD'; handIndex: number }
+  | { type: 'PLAY_CARD'; handIndex: number; amount?: number }
   | { type: 'END_MONTH' }
+  | { type: 'DRAFT_PICK'; cardId: CardId | null }
   | { type: 'SHOW_RESULT' }
   | { type: 'RESTART' }
 
@@ -189,19 +208,33 @@ export function gameReducer(game: GameState, action: GameAction): GameState {
       return game.phase === 'underwriting' ? { phase: 'result', player: game.player } : game
   }
 
+  if (game.phase === 'draft') {
+    if (action.type !== 'DRAFT_PICK') return game
+    const picked = takeDraft(game.player, action.cardId)
+    if (picked === game.player) return game
+    return { phase: 'playing', player: startMonth({ ...picked, month: picked.month + 1 }) }
+  }
+
   if (game.phase !== 'playing') return game
   const { player } = game
 
   switch (action.type) {
+    case 'DRAFT_PICK':
+      return game
     case 'RESOLVE_EVENT':
       return { phase: 'playing', player: resolveEvent(player, action.choiceId) }
     case 'PLAY_CARD':
-      return { phase: 'playing', player: playCard(player, action.handIndex) }
+      return { phase: 'playing', player: playCard(player, action.handIndex, action.amount) }
     case 'END_MONTH': {
       if (awaitingEventChoice(player)) return game
       const ended = endMonth(player)
       if (ended.month >= MONTHS) return { phase: 'underwriting', player: ended }
-      return { phase: 'playing', player: startMonth({ ...ended, month: ended.month + 1 }) }
+      const offered = withRng(ended, (s, rng) => ({ ...s, draftOffer: drawDraftOffer(s, rng) }))
+      // Nothing left to offer: go straight to next month.
+      if (offered.draftOffer.length === 0) {
+        return { phase: 'playing', player: startMonth({ ...offered, month: offered.month + 1 }) }
+      }
+      return { phase: 'draft', player: offered }
     }
   }
 }

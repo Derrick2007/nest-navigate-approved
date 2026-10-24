@@ -16,13 +16,15 @@ export type Account = {
   // Installment only. A revolving card's minimum payment is derived from its
   // balance (see accountPayment in underwrite.ts) so it can never go stale.
   monthlyPayment?: number
+  /** Revolving only: monthly interest if not the standard rate (0 for a 0% balance transfer). */
+  interestRate?: number
   open: boolean
 }
 
 // Listed here so engine state can name them; src/data/cards.ts and events.ts
 // are typed as Record<Id, Def>, so the compiler fails if a definition is missing.
 export type CardId =
-  | 'pay_card_1k'
+  | 'pay_cards'
   | 'balance_blitz'
   | 'extra_car'
   | 'pay_off_car'
@@ -37,6 +39,12 @@ export type CardId =
   | 'autopay'
   | 'dispute'
   | 'consolidate'
+  // Draft-only cards: never in the starting deck, only offered after a month.
+  | 'gift_funds'
+  | 'balance_transfer'
+  | 'overtime'
+  | 'negotiate_apr'
+  | 'income_driven'
 
 export type EventId =
   | 'quiet'
@@ -82,10 +90,16 @@ export type PlayerState = {
   deck: CardId[]
   discard: CardId[]
   event: EventInstance | null
+  /** Cards offered after the month ends (the draft); empty the rest of the time. */
+  draftOffer: CardId[]
   log: LogEntry[]
   seed: number // the run's seed, for "Replay this seed"
   rngState: number // the generator's current state (see rng.ts)
 }
 
-/** How every card and event choice changes the game. Must be pure apart from drawing from rng. */
-export type Effect = (state: PlayerState, rng: Rng) => PlayerState
+/**
+ * How every card and event choice changes the game. Must be pure apart from
+ * drawing from rng. `amount` is set only for cards the player sizes with a
+ * slider (see CardDef.amount), already clamped to a legal value.
+ */
+export type Effect = (state: PlayerState, rng: Rng, amount?: number) => PlayerState
