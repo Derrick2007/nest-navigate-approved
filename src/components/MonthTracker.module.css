@@ -1,0 +1,43 @@
+.tracker {
+  display: grid;
+  gap: 8px;
+}
+
+.label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+
+.label strong {
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.segments {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.segment {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.done {
+  background: var(--accent);
+  opacity: 0.45;
+}
+
+.current {
+  background: var(--accent);
+}

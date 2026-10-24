@@ -1,0 +1,83 @@
+.screen {
+  display: grid;
+  gap: 20px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.sidebar {
+  position: sticky;
+  top: 16px;
+}
+
+.main {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.handSection {
+  display: grid;
+  gap: 12px;
+}
+
+.handHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+}
+
+.endMonth {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.endMonthText {
+  display: grid;
+  flex: 1 1 280px;
+  gap: 8px;
+}
+
+.hint {
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+
+.endButton {
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 10px 24px;
+}
+
+@media (max-width: 820px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* On small screens the stats sit above the cards and scroll away with the page. */
+  .sidebar {
+    position: static;
+  }
+
+  .endButton {
+    flex: 1 1 100%;
+  }
+}

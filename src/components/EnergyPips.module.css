@@ -1,0 +1,28 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label {
+  color: var(--ink-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pips {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.pip {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  transition: background 150ms;
+}
+
+.full {
+  background: var(--accent);
+}

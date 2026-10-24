@@ -2,6 +2,7 @@ import { useMemo, useReducer } from 'react'
 import { gameReducer, initialGameState } from './engine/reducer'
 import { GameContext } from './hooks/useGame'
 import { BareGameScreen } from './screens/BareGameScreen'
+import { GameScreen } from './screens/GameScreen'
 
 function App() {
   const [game, dispatch] = useReducer(gameReducer, initialGameState)
@@ -11,8 +12,7 @@ function App() {
   return (
     <GameContext.Provider value={value}>
       <main className="app">
-        <h1>Approved</h1>
-        <BareGameScreen />
+        {game.phase === 'playing' ? <GameScreen player={game.player} /> : <BareGameScreen />}
       </main>
     </GameContext.Provider>
   )
