@@ -45,7 +45,8 @@ Each month you get paid, face one life event, then spend up to 3 energy on cards
 - **Content is data (`src/data/`).** The 15 cards and 12 events are typed `Record<Id, Def>` entries with their effect, unavailability reason and lesson. Adding a card is one entry, and the compiler fails if an id has no definition.
 - **`useReducer` + context, no state library.** One reducer (`START`, `RESOLVE_EVENT`, `PLAY_CARD`, `END_MONTH`, `SHOW_RESULT`, `RESTART`) wraps the engine. Derived numbers (score, DTI, max price) are computed with `useMemo`, never stored, so they cannot go stale.
 - **Seeded RNG (mulberry32).** The generator's state lives in game state, so the reducer stays pure, "Replay this year" replays the same events and draws, and tests are deterministic.
-- **CSS Modules + design tokens**, no UI library. The look is small and custom, and the bundle stays at about 86 kB gzipped.
+- **CSS Modules + design tokens**, no UI library. The look is small and custom, and the bundle stays at about 87 kB gzipped.
+- **Phaser 3 for the verdict (the bonus challenge).** At the end of the underwriting reveal, a rubber stamp (APPROVED / APPROVED FOR LESS / DENIED) slams down with a camera shake and an ink spatter, and a full approval fires confetti. React keeps all the game state; Phaser only draws (`src/phaser/stampGame.ts`). It is **lazy-loaded**: Phaser's ~320 kB gzipped chunk is fetched while the reveal lines play, so the first page load doesn't pay for it. The game is destroyed when the reveal unmounts, and under `prefers-reduced-motion` or a failed load it falls back to a static CSS stamp (`components/ApprovalStamp.tsx`).
 - **Vitest** for 86 tests: every formula and card, reducer edge cases (event blocking, overdrafts, missed payments), same-seed determinism, 200 random runs checking state invariants, and balance tests (below).
 - **Vercel**, deployed from GitHub on every push to `main`.
 
@@ -70,6 +71,7 @@ src/
   components/  stat panel, cards, event banner, action bar, previews, tooltips
   screens/     start, game, underwriting reveal, result
   hooks/       game context, keyboard shortcuts, change flashes
+  phaser/      the stamp-and-confetti scene, lazy-loaded on the reveal
 docs/SPEC.md   rules, numbers and decisions; kept in sync with the code
 ```
 
@@ -79,7 +81,6 @@ docs/SPEC.md   rules, numbers and decisions; kept in sync with the code
 - **Show the year as a story on the result screen.** A small chart of max home price month by month, with the moves that moved it most, would make cause and effect obvious.
 - **Save progress.** Refreshing the page loses the run. Saving the game state to `localStorage` under a schema version is a small change.
 - **Habits** (planned P2): pick a lasting perk at months 4 and 8, such as "Autopay everything" or "Frugal streak", for more strategy and replay value.
-- **A Phaser layer for the underwriting reveal** (the bonus challenge): a stamp slamming down and confetti on approval. I kept the scope to a finished, tested React slice instead.
 - **Component tests** with React Testing Library for the screens. Today the tests cover the engine and the pure UI helpers (preview formatting, reveal steps, notices), not rendered components.
 - **More scenarios**: different incomes and targets, FHA-style low-down-payment loans, gift funds, and inquiries that age off.
 
@@ -92,3 +93,4 @@ docs/SPEC.md   rules, numbers and decisions; kept in sync with the code
 - **Accepting the pre-approved card offer usually raises the score.** With 75% card utilization, $5,000 of extra credit outweighs the inquiry and the newer account. That is honest under the model, but it softens the "don't open credit before you apply" message. The furniture deal in months 8–12 carries that lesson more cleanly.
 - **When an overdraft can't fit on a card**, the shortfall is recorded as a missed payment and then written off rather than carried as debt. This keeps the rules simple.
 - **Browser coverage:** tested in Chromium at desktop and phone sizes, including keyboard play. It has not been tested on real iOS Safari or Firefox. On touch screens, tooltips rely on tap-to-hover.
+- **The Phaser stamp was verified through its scene state** (scale, angle, position inside the canvas, particle counts at each point in time) rather than by eye, because the automated browser used for testing doesn't draw WebGL frames in the background.

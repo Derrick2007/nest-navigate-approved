@@ -16,7 +16,7 @@ You have 12 months to get mortgage-ready for a **$325,000** home. Each month you
 | P0 | Deployed on Vercel, README complete | Yes |
 | P1 | Engine unit tests (Vitest), seeded RNG with a "play this seed again" button, keyboard support, mobile-friendly layout | Strongly wanted |
 | P2 | Habits (relics) picked at months 4 and 8, sound, animations with Framer Motion | Nice to have |
-| P3 | Phaser 3 layer for the underwriting reveal (stamp, confetti particles) | Bonus only |
+| P3 | Phaser 3 layer for the underwriting reveal (stamp, confetti particles) | Bonus only (done: `src/phaser/stampGame.ts`, lazy-loaded by `components/ApprovalStamp.tsx`, static fallback under reduced motion) |
 
 Rule: do not start a P(n+1) item until all P(n) items work end to end.
 
