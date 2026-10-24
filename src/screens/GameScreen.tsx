@@ -129,6 +129,7 @@ export function GameScreen({ player }: { player: PlayerState }) {
               unavailable={view.unavailable}
               // Paychecks still to come after this month.
               monthsLeft={MONTHS - player.month}
+              locked={view.awaitingChoice}
               onPlay={play}
             />
           </section>

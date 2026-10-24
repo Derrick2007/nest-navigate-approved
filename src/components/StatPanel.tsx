@@ -5,7 +5,7 @@ import type { StatKey, StatSnapshot } from '../engine/preview'
 import { MIN_CREDIT_SCORE, type UnderwritingResult } from '../engine/underwrite'
 import { useStatChanges, type StatChanges } from '../hooks/useStatChanges'
 import styles from './StatPanel.module.css'
-import { formatChange, formatStat, STAT_EXPLANATIONS, STAT_LABELS } from './statFormat'
+import { formatChange, formatStat, STAT_EXPLANATIONS, STAT_LABELS, STAT_SHORT_LABELS } from './statFormat'
 import { StatTooltip } from './StatTooltip'
 
 type Props = {
@@ -66,12 +66,24 @@ type RowProps = {
   tooltip?: ReactNode
 }
 
+/** The full name on wide screens, the short one ("DTI") where the panel is narrow. */
+function StatLabel({ stat }: { stat: StatKey }) {
+  return (
+    <>
+      <span className={styles.fullLabel}>{STAT_LABELS[stat]}</span>
+      <span className={styles.shortLabel} aria-hidden="true">
+        {STAT_SHORT_LABELS[stat]}
+      </span>
+    </>
+  )
+}
+
 /** One of the three numbers a lender reads: large, with an explanation. */
 function PrimaryRow({ stat, value, changes, tone = 'neutral', detail, tooltip }: RowProps) {
   return (
     <div className={styles.row}>
       <dt className={styles.rowLabel}>
-        {STAT_LABELS[stat]}
+        <StatLabel stat={stat} />
         <StatTooltip label={STAT_LABELS[stat]}>{tooltip ?? STAT_EXPLANATIONS[stat]}</StatTooltip>
       </dt>
       <dd className={styles.rowValue}>
@@ -90,7 +102,7 @@ function SecondaryRow({ stat, value, changes, tone = 'neutral' }: RowProps) {
   return (
     <div className={styles.secondaryRow}>
       <dt className={styles.rowLabel}>
-        {STAT_LABELS[stat]}
+        <StatLabel stat={stat} />
         <StatTooltip label={STAT_LABELS[stat]}>{STAT_EXPLANATIONS[stat]}</StatTooltip>
       </dt>
       <dd className={styles.secondaryValue}>
@@ -162,7 +174,7 @@ export function StatPanel({ stats, credit, result }: Props) {
             detail={`needs ${MIN_CREDIT_SCORE}+`}
             tooltip={scoreTooltip}
           />
-          <PrimaryRow stat="dti" value={stats.dti} changes={changes} detail="debts before housing" />
+          <PrimaryRow stat="dti" value={stats.dti} changes={changes} detail="before housing" />
           <PrimaryRow stat="cash" value={stats.cash} changes={changes} />
         </dl>
       </div>

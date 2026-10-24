@@ -14,11 +14,15 @@ type Props = {
   monthsLeft: number
   /** Number key that plays this card (its position in the hand). */
   shortcut: number
+  /** True while an event needs a choice: the preview stays visible for planning, but there's no Play button. */
+  locked: boolean
   onPlay: () => void
 }
 
 /** One financial move: what it costs, what it does, and its preview, before you commit. */
-export function Card({ card, preview, unavailable, monthsLeft, shortcut, onPlay }: Props) {
+export function Card({ card, preview, unavailable: reason, monthsLeft, shortcut, locked, onPlay }: Props) {
+  // While locked, the event is the only reason shown (once, above the hand), not on every card.
+  const unavailable = locked ? null : reason
   // useId, not card.id: a hand can hold two copies of the same card.
   const titleId = useId()
   return (
@@ -52,7 +56,7 @@ export function Card({ card, preview, unavailable, monthsLeft, shortcut, onPlay 
       )}
 
       <footer className={styles.footer}>
-        {unavailable ? (
+        {locked ? null : unavailable ? (
           <p className={styles.reason}>{unavailable}</p>
         ) : (
           <button

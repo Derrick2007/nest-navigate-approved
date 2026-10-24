@@ -145,3 +145,14 @@
   color: var(--ink-muted);
   font-size: 13px;
 }
+
+/* Four short numbers fit two by two even on a phone. */
+@media (max-width: 600px) {
+  .numbers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .number dd {
+    font-size: 20px;
+  }
+}
