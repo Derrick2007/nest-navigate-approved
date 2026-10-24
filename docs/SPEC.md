@@ -177,6 +177,13 @@ Also return, at the target price (or maxPrice if lower): rate with its tier brea
 
 Every card and event choice must show a **preview** before committing: a list of stat deltas, including the derived ones (score, DTI, max price if it is cheap to compute). Use the same pure functions on a cloned state; do not hand-write preview numbers.
 
+Preview details (`src/engine/preview.ts`):
+- Stats compared: max home price, score, DTI, utilization, cash, monthly savings. Only stats that move are listed, except max price, which is always shown ("no change" is often the lesson, e.g. the side gig).
+- DTI in the stat panel and previews is debts ÷ verified income **before housing**; the 43% limit is explained in its tooltip. This keeps "extra car payment doesn't lower DTI" visible instead of being blurred by cash changes.
+- Chance cards (`odds` on the card) preview their success case, labelled "If it works" with the odds shown; the real roll happens only on play, so previews never leak the outcome.
+- "End month" also previews its effect (interest, loan paydown, overdraft) before the player commits.
+- Previews are shown on every card face, not on hover, so they work on touch screens.
+
 ## 8. Cards
 
 Deck starts with 2 copies of cards marked ×2, 1 copy otherwise. `once` cards are removed after being played. Every card has a `lesson` string shown on the result screen if the player played it.

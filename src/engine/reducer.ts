@@ -1,7 +1,8 @@
 import { buildDeck, CARDS } from '../data/cards'
 import { ALL_EVENTS, EVENTS } from '../data/events'
 import { createInitialState } from '../data/initialState'
-import { addLog, chargeToCard, formatMoney } from './effects'
+import { addLog, chargeToCard } from './effects'
+import { formatMoney } from './format'
 import { createRng, pickWeighted, shuffle, type Rng } from './rng'
 import type { CardId, PlayerState } from './types'
 

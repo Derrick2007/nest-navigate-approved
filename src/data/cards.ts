@@ -3,13 +3,13 @@ import {
   addAccount,
   addLog,
   findAccount,
-  formatMoney,
   isOpen,
   openCards,
   payDownCards,
   totalCardBalance,
   updateAccount,
 } from '../engine/effects'
+import { formatMoney } from '../engine/format'
 import { chance } from '../engine/rng'
 import type { CardId, Effect, PlayerState } from '../engine/types'
 
@@ -23,6 +23,8 @@ export type CardDef = {
   copies: 1 | 2
   /** Removed from the game after being played instead of going to the discard pile. */
   once: boolean
+  /** Chance of success for cards with a random outcome. Previews show the success case. */
+  odds?: number
   description: string
   /** Shown on the result screen if the player played this card. */
   lesson?: string
@@ -30,6 +32,9 @@ export type CardDef = {
   unavailable?: (state: PlayerState) => string | null
   play: Effect
 }
+
+const RAISE_ODDS = 0.5
+const DISPUTE_ODDS = 0.4
 
 const needsCash = (amount: number) => (state: PlayerState) =>
   state.cash < amount ? `Needs ${formatMoney(amount)} in cash` : null
@@ -138,10 +143,11 @@ export const CARDS: Record<CardId, CardDef> = {
     cost: 1,
     copies: 1,
     once: true,
-    description: '50% chance your employer says yes to a 5% raise.',
+    description: 'Your employer might say yes to a 5% raise.',
     lesson: 'A raise from the same employer counts toward your income right away.',
+    odds: RAISE_ODDS,
     play: (state, rng) => {
-      if (!chance(rng, 0.5)) return addLog(state, 'You asked for a raise. Not this year.')
+      if (!chance(rng, RAISE_ODDS)) return addLog(state, 'You asked for a raise. Not this year.')
       const income = state.grossMonthlyIncome * 1.05
       return addLog(
         { ...state, grossMonthlyIncome: income },
@@ -253,11 +259,12 @@ export const CARDS: Record<CardId, CardDef> = {
     cost: 1,
     copies: 1,
     once: true,
-    description: 'Your missed payment might be a reporting error. 40% chance it gets removed.',
+    description: 'Your missed payment might be a reporting error. If so, it comes off your report.',
     lesson: 'Credit reports contain errors, and checking yours is free.',
+    odds: DISPUTE_ODDS,
     unavailable: (state) => (state.missedPayments === 0 ? 'No missed payments to dispute' : null),
     play: (state, rng) => {
-      if (!chance(rng, 0.4)) return addLog(state, 'Dispute filed. The bureau says the missed payment stands.')
+      if (!chance(rng, DISPUTE_ODDS)) return addLog(state, 'Dispute filed. The bureau says the missed payment stands.')
       return addLog(
         { ...state, missedPayments: state.missedPayments - 1 },
         'Dispute won! The missed payment is off your report.',

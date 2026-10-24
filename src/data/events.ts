@@ -1,4 +1,5 @@
-import { addAccount, addLog, findAccount, formatMoney, payWithCard, updateAccount } from '../engine/effects'
+import { addAccount, addLog, findAccount, payWithCard, updateAccount } from '../engine/effects'
+import { formatMoney } from '../engine/format'
 import type { Effect, EventId, PlayerState } from '../engine/types'
 
 // Life events, one per month. See docs/SPEC.md §9.

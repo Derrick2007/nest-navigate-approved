@@ -71,6 +71,3 @@ export function payDownCards(state: PlayerState, amount: number): PlayerState {
     ),
   }
 }
-
-export const formatMoney = (amount: number) =>
-  amount.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
