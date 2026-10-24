@@ -45,7 +45,7 @@ type Account = {
   ageYears: number;        // grows by 1/12 each month
   balance: number;
   limit?: number;          // revolving only
-  monthlyPayment: number;  // min payment for revolving = 3% of balance
+  monthlyPayment?: number; // installment only; revolving min payment is derived as 3% of balance
   open: boolean;
 };
 
@@ -258,7 +258,7 @@ Principles: engine is framework-free and fully tested; components receive data v
 
 - Starting state scores 656 and underwrites to about $278k.
 - Closing the oldest card from the start drops the score below 620 and underwriting returns DENIED.
-- Paying off the car lowers DTI and raises max price.
+- Paying off the car lowers DTI and raises max price when cash is not the limit; paid from starting cash, it makes cash the binding constraint (the intended trade-off).
 - Side gig increases cash but does not change DTI.
 - Utilization tiers hit their boundaries correctly.
 - Same seed and same actions produce the same game.
