@@ -73,6 +73,8 @@ export function GameScreen({ player }: { player: PlayerState }) {
               hand={player.hand}
               previews={view.cardPreviews}
               unavailable={view.unavailable}
+              // Paychecks still to come after this month.
+              monthsLeft={MONTHS - player.month}
               onPlay={(handIndex) => dispatch({ type: 'PLAY_CARD', handIndex })}
             />
           </section>

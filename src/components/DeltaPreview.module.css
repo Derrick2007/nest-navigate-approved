@@ -16,6 +16,11 @@
   white-space: nowrap;
 }
 
+/* The savings chip carries a projection, so it may wrap inside narrow cards. */
+.wide {
+  white-space: normal;
+}
+
 .label {
   color: var(--ink-muted);
 }

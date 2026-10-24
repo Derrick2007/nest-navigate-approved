@@ -20,7 +20,7 @@ export const STAT_SHORT_LABELS: Record<StatKey, string> = {
   dti: 'DTI',
   utilization: 'Utilization',
   cash: 'Cash',
-  monthlySavings: 'Savings / mo',
+  monthlySavings: 'Savings',
 }
 
 /** One plain-English sentence per stat (docs/SPEC.md §14). */
@@ -55,10 +55,11 @@ const signed = (change: number, format: (n: number) => string) => `${change > 0 
 
 /**
  * Just the change, for previews and the flash after a move: "+29", "−$1,000".
+ * Pass monthsLeft (paychecks still to come) to project a monthly savings change.
  * Ratios show their new value with a direction ("↓ 58%"), since "−17 points"
  * of a percentage is harder to read than where it ends up.
  */
-export function formatChange({ stat, before, after, good }: Delta): string {
+export function formatChange({ stat, before, after, good }: Delta, monthsLeft = 0): string {
   if (good === null) return 'no change'
   const change = after - before
   switch (stat) {
@@ -74,6 +75,9 @@ export function formatChange({ stat, before, after, good }: Delta): string {
     case 'cash':
       return signed(change, formatMoney)
     case 'monthlySavings':
-      return `${signed(change, formatMoney)}/mo`
+      // A recurring change shows what it adds up to, since max price can't see the future.
+      return monthsLeft > 0
+        ? `${signed(change, formatMoney)}/mo, ${signed(change * monthsLeft, formatMoney)} by month 12`
+        : `${signed(change, formatMoney)}/mo`
   }
 }

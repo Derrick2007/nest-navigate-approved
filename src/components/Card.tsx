@@ -10,11 +10,13 @@ type Props = {
   preview: Delta[]
   /** Why it can't be played right now, or null. */
   unavailable: string | null
+  /** Paychecks still to come, for projecting a monthly savings change. */
+  monthsLeft: number
   onPlay: () => void
 }
 
 /** One financial move: what it costs, what it does, and its preview, before you commit. */
-export function Card({ card, preview, unavailable, onPlay }: Props) {
+export function Card({ card, preview, unavailable, monthsLeft, onPlay }: Props) {
   // useId, not card.id: a hand can hold two copies of the same card.
   const titleId = useId()
   return (
@@ -43,7 +45,7 @@ export function Card({ card, preview, unavailable, onPlay }: Props) {
       {!unavailable && (
         <div className={styles.preview}>
           <p className={styles.previewLabel}>{card.odds !== undefined ? 'If it works' : 'If you play it'}</p>
-          <DeltaPreview deltas={preview} />
+          <DeltaPreview deltas={preview} monthsLeft={monthsLeft} />
         </div>
       )}
 

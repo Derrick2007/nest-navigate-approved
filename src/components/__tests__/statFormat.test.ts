@@ -28,3 +28,10 @@ describe('formatChange', () => {
     expect(formatChange(delta('maxPrice', 278_000, 278_000, null))).toBe('no change')
   })
 })
+
+describe('formatChange with months left', () => {
+  it('projects a monthly savings change to month 12', () => {
+    expect(formatChange(delta('monthlySavings', 700, 1_100), 11)).toBe('+$400/mo, +$4,400 by month 12')
+    expect(formatChange(delta('monthlySavings', 700, 550, false), 0)).toBe('−$150/mo')
+  })
+})

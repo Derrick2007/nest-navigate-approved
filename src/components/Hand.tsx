@@ -8,11 +8,12 @@ type Props = {
   hand: CardId[]
   previews: Delta[][]
   unavailable: (string | null)[]
+  monthsLeft: number
   onPlay: (handIndex: number) => void
 }
 
 /** This month's cards. Arrays are indexed by hand position, since a hand can hold two copies. */
-export function Hand({ hand, previews, unavailable, onPlay }: Props) {
+export function Hand({ hand, previews, unavailable, monthsLeft, onPlay }: Props) {
   if (hand.length === 0) {
     return <p className={styles.empty}>You've played every card this month. End the month when you're ready.</p>
   }
@@ -25,6 +26,7 @@ export function Hand({ hand, previews, unavailable, onPlay }: Props) {
           card={CARDS[id]}
           preview={previews[index]}
           unavailable={unavailable[index]}
+          monthsLeft={monthsLeft}
           onPlay={() => onPlay(index)}
         />
       ))}
