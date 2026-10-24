@@ -18,7 +18,14 @@ A 12-month, card-based run where you get mortgage-ready before you apply.
 
 ## How to Run Locally
 
-_Coming soon._
+Requires Node.js 20.19+ (developed on Node 26).
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm test         # engine unit tests (Vitest)
+npm run build    # type-check and production build
+```
 
 ## Tech Choices
 
