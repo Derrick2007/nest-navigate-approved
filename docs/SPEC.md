@@ -26,11 +26,12 @@ Rule: do not start a P(n+1) item until all P(n) items work end to end.
 Start ──▶ Month loop (×12) ──▶ Underwriting reveal ──▶ Result
             │  1 Paycheck
             │  2 Life event (may ask a choice)
-            │  3 Draw hand, spend energy on cards
+            │  3 Draw hand, spend energy on cards (some with an amount slider)
             │  4 End month (interest, overdraft check)
+            │  5 Draft: add 1 of 3 cards to the deck (months 1–11)
 ```
 
-1. **Start screen.** Title, one-paragraph setup ("You earn $90k, rent in the city, and want a $325k starter home in a year"), the three numbers lenders check with a one-line plain-English definition each, a "Start" button, a "How to play" disclosure.
+1. **Start screen.** A four-page step-through the player must read before starting (Start appears only on the last page): your goal and the three numbers lenders check (with your starting values), a month in Approved, building your year (draft, sliders, max price), and how the Underwriter decides.
 2. **Game screen.** Layout: stat panel (left or top on mobile), month tracker (1–12), event banner, hand of cards, energy pips, "End month" button, a small log of what happened.
 3. **Underwriting reveal.** Step-by-step checklist that animates one line at a time: credit score gate, cash for down payment + closing + reserves, DTI at the target price, then the rate being built tier by tier (base rate + credit adjustment + down payment adjustment).
 4. **Result screen.** Outcome badge, the numbers (max price, rate, monthly payment, 30-year interest), a "what if" comparison, 2–3 lessons drawn from what the player actually did, "Play again" and "Same seed" buttons.
@@ -46,6 +47,7 @@ type Account = {
   balance: number;
   limit?: number;          // revolving only
   monthlyPayment?: number; // installment only; revolving min payment is derived as 3% of balance
+  interestRate?: number;   // revolving only: monthly rate if not the standard 2% (0 on a balance transfer)
   open: boolean;
 };
 
@@ -66,13 +68,14 @@ type PlayerState = {
   deck: CardId[];
   discard: CardId[];
   event: { eventId: EventId; resolved: boolean } | null; // this month's event; cards are blocked until resolved
+  draftOffer: CardId[];   // cards offered after the month ends (the draft); empty otherwise
   log: LogEntry[];
   seed: number;     // the run's seed, for "Replay this seed"
   rngState: number; // seeded generator position; the reducer saves it back after every random draw
 };
 ```
 
-The reducer wraps this in `GameState = { phase: 'start' } | { phase: 'playing' | 'underwriting' | 'result'; player: PlayerState }`. Ending month 12 moves to `underwriting` (the reveal); `SHOW_RESULT` moves on to `result`.
+The reducer wraps this in `GameState = { phase: 'start' } | { phase: 'playing' | 'draft' | 'underwriting' | 'result'; player: PlayerState }`. Ending month 12 moves to `underwriting` (the reveal); `SHOW_RESULT` moves on to `result`.
 
 Derived values are **pure functions**, never stored: `creditScore(state)`, `utilization(state)`, `dti(state, housingPayment)`, `underwrite(state)`.
 
@@ -82,7 +85,7 @@ Derived values are **pure functions**, never stored: `creditScore(state)`, `util
 |---|---|
 | Gross monthly income | $7,500 ($90k/yr) |
 | Cash | $22,000 |
-| Monthly surplus | $700 |
+| Monthly surplus | $550 |
 | Target price | $325,000 |
 | Base rate | 6.25% |
 | Missed payments | 1 |
@@ -99,15 +102,17 @@ Accounts:
 
 With these numbers the starting score is **656** and a player who does nothing qualifies for roughly **$278k**, short of the $325k target. Good play reaches $310k–$365k. Closing the oldest card drops the score to about **618**, below the 620 gate. These outcomes are intentional; keep them when tuning.
 
-**Balance (milestone 6).** `src/engine/__tests__/balance.test.ts` plays 100 seeds per strategy and locks these bands in (`BALANCE_REPORT=1 npm test` prints the table). Measured after tuning:
+**Balance.** `src/engine/__tests__/balance.test.ts` plays 100 seeds per strategy and locks these bands in (`BALANCE_REPORT=1 npm test` prints the table). Measured after adding the draft and sliders:
 
 | Strategy | Approved | Median max price | Band enforced |
 |---|---|---|---|
-| Idle: never plays a card, cautious event choices | 0% | $289k | 0% approved, median $275k–$300k |
-| Random: uniform legal moves | 14% | $305k | 8–35% approved |
-| Greedy: one-step lookahead on projected max price | 88% | $358k | 70–95% approved, median $310k–$365k |
+| Idle: never plays or drafts a card, cautious event choices | 0% | $285k | 0% approved, median $275k–$300k |
+| Random: uniform legal moves, random slider amounts and drafts | 27% | $314k | 8–35% approved |
+| Greedy: one-step lookahead on projected max price, tries slider amounts at the tier lines | 90% | $360k | 70–95% approved, median $310k–$365k |
 
-Tuning changes: card interest is paid from cash instead of compounding the balance (an idle player's score no longer drifts from 656 to 634 by crossing a utilization tier), Side Gig pays $400/mo (was $600), Sell Unused Stuff pays $600 (was $900). Before tuning, greedy was approved 94% of the time with a $366k median.
+Tuning history:
+- Milestone 6: card interest is paid from cash instead of compounding the balance (an idle player's score no longer drifts from 656 to 634 by crossing a utilization tier), Side Gig pays $400/mo (was $600), Sell Unused Stuff pays $600 (was $900). Before tuning, greedy was approved 94% of the time with a $366k median.
+- Draft and sliders: these made the game too easy (greedy 100% approved, $393k median; random 33%). Fixes: monthly surplus $700 → $550, Sell Unused Stuff became draft-only, Meal Prep starts with one copy instead of two, the gift letter is $2,000, and a "trade down to a cheaper car" card was cut (it removed a $380 payment almost for free and duplicated Pay Off the Car's lesson). None of this changes the starting numbers above (656, ~$278k, 618).
 
 ## 6. Formulas
 
@@ -173,17 +178,18 @@ Also return, at the target price (or maxPrice if lower): rate with its tier brea
 
 ## 7. Month loop rules
 
-1. **Paycheck:** `cash += monthlySurplus + unverifiedIncome`. Account ages +1/12.
+1. **Paycheck:** `cash += monthlySurplus + unverifiedIncome`. Account ages +1/12. (Card interest comes out at month end, so the stat panel's "Monthly savings" is surplus + unverified income − this month's card interest.)
 2. **Event:** draw one event from the event deck (seeded). If it has a choice, block until the player picks.
 3. **Hand:** draw 5 cards, energy = 3. Each card costs 1 or 2 energy. Unplayed cards go to discard. Reshuffle discard when deck is empty.
 4. **End month:**
-   - Card interest of 2% a month (24% APR) is paid from cash, as if the minimum payment covers it; revolving balances hold steady. Log the interest paid.
+   - Card interest of 2% a month (24% APR; 1% after Call to Lower Your APR; an account's own `interestRate` wins, e.g. 0% on a balance transfer) is paid from cash, as if the minimum payment covers it; revolving balances hold steady. Log the interest paid.
    - Installment balances drop by their payment's principal share (simplify: balance −= 0.6 × payment).
    - If `cash < 0`: move the shortfall onto the revolving card with most room. If any part of it doesn't fit, `missedPayments += 1` (unless `flags.autopay`) and set cash to 0.
    - An installment loan whose balance reaches 0 closes.
 
 "Put it on a card" choices use the same rule: the card with the most room takes what fits and the rest comes out of cash. Cards that spend cash are unavailable when the player can't afford them, and each card states why it is unavailable.
-5. After month 12, go to the reveal.
+5. **Draft** (after months 1–11): offer up to 3 different cards, drawn from the seeded rng and weighted by `draftWeight` (draft-only cards 1.5, others 1). Never offer a one-time card the player owns or has played, or a card that could never be played again (its `unavailable` check fails even with unlimited cash and energy). The player takes one, which goes on **top of the deck** so it is in next month's hand, or skips. If nothing can be offered, go straight to the next month.
+6. After month 12, go to the reveal.
 
 Every card and event choice must show a **preview** before committing: a list of stat deltas, including the derived ones (score, DTI, max price if it is cheap to compute). Use the same pure functions on a cloned state; do not hand-write preview numbers.
 
@@ -211,27 +217,34 @@ Polish (milestone 7):
 
 ## 8. Cards
 
-Deck starts with 2 copies of cards marked ×2, 1 copy otherwise. `once` cards are removed after being played. Every card has a `lesson` string shown on the result screen if the player played it.
+Deck starts with 2 copies of cards marked ×2, none of cards marked *draft*, 1 copy otherwise (15 cards). `once` cards are removed after being played. Every card has a `lesson` string shown on the result screen if the player played it. Cards marked **slider** let the player choose the amount (see below).
 
 | Id | Name | Cost | Effect | Lesson (short) |
 |---|---|---|---|---|
-| `pay_card_1k` ×2 | Pay Down a Card | 1 | cash −1,000; highest-utilization card balance −1,000 | Utilization is about 30% of your score and updates monthly |
-| `balance_blitz` | Balance Blitz | 2 | cash −2,500 split across cards | Getting under 30%, then 10%, unlocks big jumps |
-| `extra_car` | Extra Car Payment | 1 | cash −1,500; car balance −1,500 | Lowering a balance doesn't lower DTI; the payment is what counts |
+| `pay_cards` ×2 slider | Pay Down Cards | 1 | $100–$2,000 (default $1,000), split across cards by balance | Utilization is about 30% of your score and updates monthly |
+| `balance_blitz` slider | Balance Blitz | 2 | $1,000–$5,000 (default $2,500), split across cards by balance | Getting under 30%, then 10%, unlocks big jumps |
+| `extra_car` slider | Extra Car Payment | 1 | $500–$3,000 (default $1,500) off the car balance | Lowering a balance doesn't lower DTI; the payment is what counts |
 | `pay_off_car` once | Pay Off the Car | 2 | cash −car balance; car account closed | Removing a monthly payment frees DTI room for housing |
 | `side_gig` once | Start a Side Gig | 1 | unverifiedIncome +400 | Lenders usually want about 2 years of history before counting new income |
 | `ask_raise` once | Ask for a Raise | 1 | 50%: income +5% (verified) | Same-employer raises count right away |
 | `limit_increase` once | Request Limit Increase | 1 | Old Faithful limit +3,000 | More available credit lowers utilization without paying anything |
 | `store_card` | Store Card Bonus | 1 | cash +200; inquiry +1; new revolving account, age 0, limit 1,500 | New accounts cost inquiries and lower average age |
 | `close_old` once | Close Your Oldest Card | 1 | Old Faithful closed (balance moved to Rewards Card) | Closing old cards shortens history and raises utilization |
-| `meal_prep` ×2 | Meal Prep Month | 1 | cash +400 | Cash covers down payment, closing costs and reserves |
-| `sell_stuff` | Sell Unused Stuff | 2 | cash +600 | |
+| `meal_prep` | Meal Prep Month | 1 | cash +400 | Cash covers down payment, closing costs and reserves |
+| `sell_stuff` draft | Sell Unused Stuff | 2 | cash +600 | |
 | `cheaper_place` once | Move Somewhere Cheaper | 2 | cash −800; monthlySurplus +300 | Recurring savings compound over the year |
 | `autopay` once | Set Up Autopay | 1 | flags.autopay = true | Payment history is the largest score factor |
 | `dispute` once | Dispute a Report Error | 1 | 40%: missedPayments −1 | Credit reports contain errors; checking is free |
 | `consolidate` once | Personal Loan Consolidation | 1 | inquiry +1; card balances → new installment loan at 4% of balance per month | Can help utilization but adds a payment and an inquiry |
+| `gift_funds` draft once | Family Gift Letter | 1 | cash +2,000 | Documented gift money can go toward a down payment |
+| `balance_transfer` draft once | 0% Balance Transfer | 1 | all card balances → new $6,000 card at 0%; 3% fee from cash; inquiry +1 | Stops interest and adds credit, but costs a fee, an inquiry and a new account |
+| `overtime` draft | Pick Up Overtime | 2 | cash +800 | Overtime needs about two years of history before it counts as income |
+| `negotiate_apr` draft once | Call to Lower Your APR | 1 | card interest 2% → 1% a month | Card interest is negotiable, and asking doesn't touch your score |
+| `income_driven` draft once | Income-Driven Student Loan Plan | 1 | student payment $250 → $150 | Lenders count the reported payment, so a lower one can lower DTI (rules vary) |
 
-Card data lives in one typed `Record<CardId, CardDef>` (`src/data/cards.ts`), so the compiler flags a missing card; effects are pure functions `(state, rng) => state`. Balance Blitz splits in proportion to each card's balance.
+**Sliders** (`CardDef.amount`): `min`, `max`, `step`, `initial` and a `limit(state)` (what the player can put in now: cash, and what is owed). `engine/amounts.ts` turns these into the legal range and snaps any requested amount to it; the reducer and the UI both use it. Card-payment sliders mark where utilization crosses 30% and 10% (`paydownToReach`). Previews update as the slider moves.
+
+Card data lives in one typed `Record<CardId, CardDef>` (`src/data/cards.ts`), so the compiler flags a missing card; effects are pure functions `(state, rng, amount?) => state`.
 
 ## 9. Events
 
@@ -278,7 +291,9 @@ src/
     credit.ts        # creditScore + components
     mortgage.ts      # pmt, piti, rate tiers
     underwrite.ts
-    reducer.ts       # actions: START, RESOLVE_EVENT, PLAY_CARD, END_MONTH, SHOW_RESULT, RESTART
+    reducer.ts       # actions: START, RESOLVE_EVENT, PLAY_CARD (with amount), END_MONTH, DRAFT_PICK, SHOW_RESULT, RESTART
+    draft.ts         # draft pool, seeded offers, taking a card
+    amounts.ts       # slider ranges and snapping
     preview.ts       # diff two states into display deltas
     __tests__/
   data/

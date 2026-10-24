@@ -12,11 +12,11 @@ A 12-month, card-based run where you get mortgage-ready before you apply.
 
 **The concept.** Most first-time buyers don't get turned down or overcharged for one big reason. It's how a handful of numbers interact: credit score, debt-to-income ratio (DTI), down payment and cash reserves. Approved teaches how a lender actually reads those numbers.
 
-**The mechanic.** Each turn is one month. You collect your paycheck, draw a hand of financial moves, and have limited energy to play a few: pay down a credit card, pay off a car loan, pick up a side gig, open a store card for the sign-up bonus, close your oldest card. Every card previews its effect before you commit. Random life events, like a rent hike, a medical bill or rising home prices, force trade-offs. After month 12 you face the Underwriter, who checks each stat against simplified real-world thresholds and builds your interest rate tier by tier.
+**The mechanic.** Each turn is one month. You collect your paycheck, draw a hand of financial moves, and have limited energy to play a few: pay down a credit card, pay off a car loan, pick up a side gig, open a store card for the sign-up bonus, close your oldest card. Every card previews its effect before you commit. After each month you draft one new card into your deck, and payment cards let you choose how much, so you build a strategy instead of repeating one. Random life events, like a rent hike, a medical bill or rising home prices, force trade-offs. After month 12 you face the Underwriter, who checks each stat against simplified real-world thresholds and builds your interest rate tier by tier.
 
 **The learning outcome.** Players leave knowing what DTI is and why a $400 car payment shrinks their buying power, why closing an old card can lower their score, why brand-new side income may not count yet, and how a 40-point credit gap becomes tens of thousands of dollars over a 30-year loan.
 
-**Why it's fun.** It borrows the roguelike loop: scarce actions, random draws, compounding choices and a big final calculation. Counterintuitive cards create "wait, really?" moments, and every run plays out differently, so replaying to beat your rate feels natural.
+**Why it's fun.** It borrows the roguelike loop: scarce actions, random draws, a deck you build, compounding choices and a big final calculation. Counterintuitive cards create "wait, really?" moments, and every run plays out differently, so replaying to beat your rate feels natural.
 
 ## How to Run Locally
 
@@ -25,7 +25,7 @@ Requires Node.js 20.19+ (developed on Node 26).
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # 86 tests: engine, previews, lessons, balance simulations
+npm test         # 110 tests: engine, previews, lessons, balance simulations
 npm run build    # type-check and production build
 npm run lint     # oxlint
 ```
@@ -34,7 +34,7 @@ npm run lint     # oxlint
 
 ### How to play
 
-Each month you get paid, face one life event, then spend up to 3 energy on cards. Every card shows what it would change before you play it: green helps, red hurts. Keep an eye on **max home price**, the most house you would be approved for today. After month 12 the Underwriter checks your numbers one by one and builds your rate. On a keyboard, number keys play a card or pick an event option and `E` ends the month.
+A four-page intro explains the game before you can start. Then each month you get paid, face one life event, and spend up to 3 energy on cards. Every card shows what it would change before you play it: green helps, red hurts. Payment cards have a slider that marks where card utilization crosses 30% and 10%, which is where the score jumps. After each month you add one of three new cards to your deck (it shows up in next month's hand) or skip. Keep an eye on **max home price**, the most house you would be approved for today. After month 12 the Underwriter checks your numbers one by one and builds your rate. On a keyboard, number keys play a card, pick an event option or take a draft card, and `E` ends the month (or skips the draft).
 
 ## Tech Choices
 
@@ -42,12 +42,12 @@ Each month you get paid, face one life event, then spend up to 3 energy on cards
 - **A pure TypeScript engine (`src/engine/`), with no React in it.** Credit score, mortgage math, underwriting, the month loop and the lesson picker are plain functions of state. That is what makes the core features possible:
   - **Previews run the real rules.** Every card, event choice and "End month" shows its effect by running the actual effect on the current state and diffing the numbers, so a preview can never disagree with what happens.
   - **It is fully testable**, including whole simulated games.
-- **Content is data (`src/data/`).** The 15 cards and 12 events are typed `Record<Id, Def>` entries with their effect, unavailability reason and lesson. Adding a card is one entry, and the compiler fails if an id has no definition.
-- **`useReducer` + context, no state library.** One reducer (`START`, `RESOLVE_EVENT`, `PLAY_CARD`, `END_MONTH`, `SHOW_RESULT`, `RESTART`) wraps the engine. Derived numbers (score, DTI, max price) are computed with `useMemo`, never stored, so they cannot go stale.
-- **Seeded RNG (mulberry32).** The generator's state lives in game state, so the reducer stays pure, "Replay this year" replays the same events and draws, and tests are deterministic.
+- **Content is data (`src/data/`).** The 20 cards and 12 events are typed `Record<Id, Def>` entries with their effect, unavailability reason, lesson, slider range and draft weight. Adding a card is one entry, and the compiler fails if an id has no definition.
+- **`useReducer` + context, no state library.** One reducer (`START`, `RESOLVE_EVENT`, `PLAY_CARD` with an optional amount, `END_MONTH`, `DRAFT_PICK`, `SHOW_RESULT`, `RESTART`) wraps the engine. Slider amounts are snapped to a legal value by the same function in the reducer and the UI (`engine/amounts.ts`), so the UI can't offer a payment the rules would refuse. Derived numbers (score, DTI, max price) are computed with `useMemo`, never stored, so they cannot go stale.
+- **Seeded RNG (mulberry32).** The generator's state lives in game state, so the reducer stays pure, "Replay this year" replays the same events, draws and draft offers, and tests are deterministic.
 - **CSS Modules + design tokens**, no UI library. The look is small and custom, and the bundle stays at about 87 kB gzipped.
 - **Phaser 3 for the verdict (the bonus challenge).** At the end of the underwriting reveal, a rubber stamp (APPROVED / APPROVED FOR LESS / DENIED) slams down with a camera shake and an ink spatter, and a full approval fires confetti. React keeps all the game state; Phaser only draws (`src/phaser/stampGame.ts`). It is **lazy-loaded**: Phaser's ~320 kB gzipped chunk is fetched while the reveal lines play, so the first page load doesn't pay for it. The game is destroyed when the reveal unmounts, and under `prefers-reduced-motion` or a failed load it falls back to a static CSS stamp (`components/ApprovalStamp.tsx`).
-- **Vitest** for 86 tests: every formula and card, reducer edge cases (event blocking, overdrafts, missed payments), same-seed determinism, 200 random runs checking state invariants, and balance tests (below).
+- **Vitest** for 110 tests: every formula and card, reducer edge cases (event blocking, overdrafts, missed payments), same-seed determinism, 200 random runs checking state invariants, and balance tests (below).
 - **Vercel**, deployed from GitHub on every push to `main`.
 
 ### Balance, measured instead of guessed
@@ -56,11 +56,11 @@ Each month you get paid, face one life event, then spend up to 3 energy on cards
 
 | Player | Approved | Median max price |
 |---|---|---|
-| Does nothing | 0% | $289k |
-| Clicks randomly | 14% | $305k |
-| Reads the previews (one-step lookahead) | 88% | $358k |
+| Does nothing | 0% | $285k |
+| Clicks randomly | 27% | $314k |
+| Reads the previews (one-step lookahead, tries slider amounts at the tier lines) | 90% | $360k |
 
-The first measurement found two problems. First, an idle player's score drifted down because card interest compounded them past a utilization tier. Second, good play won 94% of the time because two "free cash" cards were played in nearly every run. Both are fixed; the git history has the before and after.
+The first measurement found two problems. First, an idle player's score drifted down because card interest compounded them past a utilization tier. Second, good play won 94% of the time because two "free cash" cards were played in nearly every run. Adding the draft and sliders later pushed good play to 100% approved, so the starting deck got leaner and monthly savings dropped from $700 to $550. Both rounds are in the git history with before and after numbers.
 
 ### Project structure
 
