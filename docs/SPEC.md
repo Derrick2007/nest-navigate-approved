@@ -201,6 +201,14 @@ Game screen clarity (from the first play-test, where the screen read as too busy
 - Energy and "End month" live in a sticky action bar with a one-line end-of-month preview.
 - The log shows the latest two entries, with the full history behind "Show all".
 
+Polish (milestone 7):
+- **Keyboard:** number keys play the card in that position (or pick an event option while one is waiting), E ends the month. Buttons show the key and set `aria-keyshortcuts`; hints are hidden on touch screens (`hover: none`).
+- **Focus:** after every move, focus goes to the event heading if a choice is waiting, else the hand heading, else End month. It lands on a heading, never on a card or option, so a stray Enter can't make a choice for the player. The reveal starts focused on Skip and moves to Continue when done; the result screen focuses its headline.
+- **Screen readers:** Play and Choose buttons are named after their card or option, the log is a polite live region, and the action bar's status line is `role="status"`.
+- **Edge states:** the action bar explains why nothing can be done (event waiting, out of energy, nothing affordable) and warns when cash is negative before month end (`src/screens/monthNotice.ts`, tested).
+- **Small screens:** the stat panel puts the three lender numbers side by side; tooltips become a card pinned near the bottom of the screen; the action bar puts energy and the button on one row.
+- Tooltips can be dismissed with Escape without moving focus.
+
 ## 8. Cards
 
 Deck starts with 2 copies of cards marked ×2, 1 copy otherwise. `once` cards are removed after being played. Every card has a `lesson` string shown on the result screen if the player played it.

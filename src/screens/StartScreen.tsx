@@ -72,6 +72,7 @@ export function StartScreen() {
           <li>Every card shows what it will change before you play it. Green helps, red hurts.</li>
           <li>Keep an eye on your max home price. It's the most house you'd be approved for today.</li>
           <li>After month 12, the Underwriter checks your numbers and builds your interest rate.</li>
+          <li>On a keyboard: number keys play a card or pick an event option, E ends the month.</li>
         </ul>
       </details>
 

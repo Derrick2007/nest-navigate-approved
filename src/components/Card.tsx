@@ -12,11 +12,13 @@ type Props = {
   unavailable: string | null
   /** Paychecks still to come, for projecting a monthly savings change. */
   monthsLeft: number
+  /** Number key that plays this card (its position in the hand). */
+  shortcut: number
   onPlay: () => void
 }
 
 /** One financial move: what it costs, what it does, and its preview, before you commit. */
-export function Card({ card, preview, unavailable, monthsLeft, onPlay }: Props) {
+export function Card({ card, preview, unavailable, monthsLeft, shortcut, onPlay }: Props) {
   // useId, not card.id: a hand can hold two copies of the same card.
   const titleId = useId()
   return (
@@ -53,8 +55,14 @@ export function Card({ card, preview, unavailable, monthsLeft, onPlay }: Props) 
         {unavailable ? (
           <p className={styles.reason}>{unavailable}</p>
         ) : (
-          <button type="button" className="button button-primary" onClick={onPlay}>
-            Play
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={onPlay}
+            aria-keyshortcuts={String(shortcut)}
+            aria-label={`Play ${card.name}`}
+          >
+            Play <kbd className={styles.kbd}>{shortcut}</kbd>
           </button>
         )}
       </footer>

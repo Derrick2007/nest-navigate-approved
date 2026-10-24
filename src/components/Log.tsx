@@ -26,7 +26,8 @@ export function Log({ entries }: Props) {
           </button>
         )}
       </div>
-      <ol className={`${styles.list} ${expanded ? styles.expanded : ''}`}>
+      {/* Polite live region: new entries are read out after each move. */}
+      <ol className={`${styles.list} ${expanded ? styles.expanded : ''}`} aria-live="polite">
         {visible.map((entry) => (
           <li key={entry.key} className={styles.entry}>
             <span className={styles.month}>M{entry.month}</span>

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { formatCompactMoney, formatMoney, formatRate } from '../engine/format'
 import { pickLessons } from '../engine/lessons'
 import { randomSeed } from '../engine/rng'
@@ -79,10 +79,16 @@ export function ResultScreen({ player }: { player: PlayerState }) {
       : limit && CONSTRAINT_COPY[limit].title
   const whatIf = whatIfText(result)
   const { quote } = result
+  const heroRef = useRef<HTMLElement>(null)
+
+  // Land on the outcome, so a screen reader reads the verdict first.
+  useEffect(() => {
+    heroRef.current?.focus()
+  }, [])
 
   return (
     <div className={styles.screen}>
-      <header className={`${styles.hero} ${styles[head.tone]}`}>
+      <header ref={heroRef} tabIndex={-1} className={`${styles.hero} ${styles[head.tone]}`}>
         <p className={styles.badge}>{head.badge}</p>
         <p className={styles.headline}>{head.text}</p>
       </header>

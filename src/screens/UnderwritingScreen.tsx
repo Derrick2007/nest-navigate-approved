@@ -18,6 +18,12 @@ export function UnderwritingScreen({ player }: { player: PlayerState }) {
   const [shown, setShown] = useState(() => (prefersReducedMotion() ? steps.length : 1))
   const done = shown >= steps.length
   const continueRef = useRef<HTMLButtonElement>(null)
+  const skipRef = useRef<HTMLButtonElement>(null)
+
+  // Start with focus on Skip, so Enter or Space jumps straight to the end.
+  useEffect(() => {
+    skipRef.current?.focus()
+  }, [])
 
   // Reveal the next line on a timer until every step is visible.
   useEffect(() => {
@@ -63,7 +69,7 @@ export function UnderwritingScreen({ player }: { player: PlayerState }) {
             See what it means
           </button>
         ) : (
-          <button type="button" className="button" onClick={() => setShown(steps.length)}>
+          <button ref={skipRef} type="button" className="button" onClick={() => setShown(steps.length)}>
             Skip to the end
           </button>
         )}

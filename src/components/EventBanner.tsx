@@ -17,7 +17,9 @@ export function EventBanner({ event, awaitingChoice, choicePreviews, onChoose }:
   return (
     <section className={`${styles.banner} ${awaitingChoice ? styles.waiting : ''}`} aria-live="polite">
       <p className={styles.kicker}>{awaitingChoice ? 'Decide before you play cards' : 'This month'}</p>
-      <h2 className={styles.name}>{event.name}</h2>
+      <h2 className={styles.name} tabIndex={-1} data-autofocus={awaitingChoice ? 'event' : undefined}>
+        {event.name}
+      </h2>
       <p className={styles.description}>{event.description}</p>
 
       {awaitingChoice && event.choices && (
@@ -29,8 +31,14 @@ export function EventBanner({ event, awaitingChoice, choicePreviews, onChoose }:
                 <p className={styles.choiceDescription}>{choice.description}</p>
               </div>
               <DeltaPreview deltas={choicePreviews[i]} />
-              <button type="button" className="button button-primary" onClick={() => onChoose(choice.id)}>
-                Choose
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => onChoose(choice.id)}
+                aria-keyshortcuts={String(i + 1)}
+                aria-label={`Choose: ${choice.label}`}
+              >
+                Choose <kbd className={styles.kbd}>{i + 1}</kbd>
               </button>
             </div>
           ))}

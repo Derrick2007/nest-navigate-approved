@@ -27,6 +27,7 @@ export function Hand({ hand, previews, unavailable, monthsLeft, onPlay }: Props)
           preview={previews[index]}
           unavailable={unavailable[index]}
           monthsLeft={monthsLeft}
+          shortcut={index + 1}
           onPlay={() => onPlay(index)}
         />
       ))}

@@ -44,3 +44,27 @@
   opacity: 1;
   transform: translate(-50%, 0);
 }
+
+/* Escape was pressed: stay hidden until the pointer or focus leaves. */
+.wrap.dismissed .tip {
+  opacity: 0;
+}
+
+/* On phones a tooltip centred on a small "i" can run off screen, so it
+   becomes a card pinned above the bottom of the viewport instead. */
+@media (max-width: 600px) {
+  .tip {
+    position: fixed;
+    top: auto;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    width: auto;
+    transform: translateY(4px);
+  }
+
+  .wrap:hover .tip,
+  .wrap:focus-within .tip {
+    transform: none;
+  }
+}

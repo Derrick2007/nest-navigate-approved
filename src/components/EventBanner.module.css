@@ -54,3 +54,19 @@
   color: var(--ink-muted);
   font-size: 14px;
 }
+
+/* Keyboard shortcut hint inside the button. */
+.kbd {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 20%);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (hover: none) {
+  .kbd {
+    display: none;
+  }
+}
