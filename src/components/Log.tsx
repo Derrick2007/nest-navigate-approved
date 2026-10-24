@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { LogEntry } from '../engine/types'
 import styles from './Log.module.css'
 
@@ -5,21 +6,33 @@ type Props = {
   entries: LogEntry[]
 }
 
-/** What has happened so far, newest first. */
+const RECENT = 2
+
+/** The latest couple of things that happened, with the full history one click away. */
 export function Log({ entries }: Props) {
+  const [expanded, setExpanded] = useState(false)
+  // Keep each entry's original index as its key; newest first.
+  const ordered = entries.map((entry, i) => ({ ...entry, key: i })).reverse()
+  const visible = expanded ? ordered : ordered.slice(0, RECENT)
+  const hidden = ordered.length - RECENT
+
   return (
     <section className={styles.log} aria-label="What happened">
-      <h2 className={styles.title}>What happened</h2>
-      <ol className={styles.list}>
-        {entries
-          .map((entry, i) => ({ ...entry, key: i }))
-          .reverse()
-          .map((entry) => (
-            <li key={entry.key} className={styles.entry}>
-              <span className={styles.month}>M{entry.month}</span>
-              {entry.text}
-            </li>
-          ))}
+      <div className={styles.header}>
+        <h2 className={styles.title}>What happened</h2>
+        {hidden > 0 && (
+          <button type="button" className={styles.toggle} aria-expanded={expanded} onClick={() => setExpanded((e) => !e)}>
+            {expanded ? 'Show less' : `Show all ${ordered.length}`}
+          </button>
+        )}
+      </div>
+      <ol className={`${styles.list} ${expanded ? styles.expanded : ''}`}>
+        {visible.map((entry) => (
+          <li key={entry.key} className={styles.entry}>
+            <span className={styles.month}>M{entry.month}</span>
+            {entry.text}
+          </li>
+        ))}
       </ol>
     </section>
   )

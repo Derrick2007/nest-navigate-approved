@@ -1,6 +1,13 @@
 .log {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .title {
@@ -11,15 +18,32 @@
   letter-spacing: 0.04em;
 }
 
+.toggle {
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  text-decoration: underline;
+}
+
 .list {
   display: grid;
-  gap: 6px;
-  max-height: 240px;
+  gap: 4px;
   margin: 0;
   padding: 0;
-  overflow-y: auto;
   list-style: none;
   font-size: 14px;
+}
+
+.expanded {
+  max-height: 260px;
+  overflow-y: auto;
 }
 
 .entry {

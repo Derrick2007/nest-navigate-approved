@@ -1,0 +1,23 @@
+.tip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.text {
+  flex: 1 1 320px;
+}
+
+.dismiss {
+  min-height: 34px;
+  padding: 4px 14px;
+  border-color: var(--accent);
+  background: transparent;
+  color: var(--accent-strong);
+}

@@ -182,7 +182,14 @@ Preview details (`src/engine/preview.ts`):
 - DTI in the stat panel and previews is debts ÷ verified income **before housing**; the 43% limit is explained in its tooltip. This keeps "extra car payment doesn't lower DTI" visible instead of being blurred by cash changes.
 - Chance cards (`odds` on the card) preview their success case, labelled "If it works" with the odds shown; the real roll happens only on play, so previews never leak the outcome.
 - "End month" also previews its effect (interest, loan paydown, overdraft) before the player commits.
-- Previews are shown on every card face, not on hover, so they work on touch screens.
+- Previews are shown on every card face, not on hover, so they work on touch screens. They show only the change as compact chips ("Score +29", "Cash −$1,000", "Utilization ↓ 58%"); the full before → after is in the chip's title and screen-reader text. Cards that can't be played hide their preview and show the reason instead.
+
+Game screen clarity (from the first play-test, where the screen read as too busy):
+- The stat panel leads with max home price, then the three numbers the start screen introduced (score, DTI, cash) under "What the lender checks". Utilization and monthly savings are smaller supporting rows.
+- After every move, each number that changed briefly shows its change ("+29") next to it.
+- Month 1 shows a dismissible one-line tip about previews and the goal.
+- Energy and "End month" live in a sticky action bar with a one-line end-of-month preview.
+- The log shows the latest two entries, with the full history behind "Show all".
 
 ## 8. Cards
 

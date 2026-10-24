@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
-import { DeltaPreview } from '../components/DeltaPreview'
-import { EnergyPips } from '../components/EnergyPips'
+import { useMemo, useState } from 'react'
+import { ActionBar } from '../components/ActionBar'
+import { CoachTip } from '../components/CoachTip'
 import { EventBanner } from '../components/EventBanner'
 import { Hand } from '../components/Hand'
 import { Log } from '../components/Log'
@@ -8,6 +8,7 @@ import { MonthTracker } from '../components/MonthTracker'
 import { StatPanel } from '../components/StatPanel'
 import { EVENTS } from '../data/events'
 import { creditBreakdown } from '../engine/credit'
+import { formatCompactMoney } from '../engine/format'
 import { previewCard, previewChoice, previewEndMonth, snapshot } from '../engine/preview'
 import { awaitingEventChoice, cardUnavailableReason, ENERGY_PER_MONTH, MONTHS } from '../engine/reducer'
 import type { PlayerState } from '../engine/types'
@@ -37,6 +38,7 @@ function deriveView(player: PlayerState) {
 export function GameScreen({ player }: { player: PlayerState }) {
   const { dispatch } = useGame()
   const view = useMemo(() => deriveView(player), [player])
+  const [tipDismissed, setTipDismissed] = useState(false)
   const lastMonth = player.month === MONTHS
 
   return (
@@ -49,6 +51,13 @@ export function GameScreen({ player }: { player: PlayerState }) {
         </aside>
 
         <div className={styles.main}>
+          {player.month === 1 && !tipDismissed && (
+            <CoachTip onDismiss={() => setTipDismissed(true)}>
+              Every card shows what it would change before you play it. Green helps, red hurts. Your goal: get your
+              max home price to {formatCompactMoney(player.targetPrice)} by month {MONTHS}.
+            </CoachTip>
+          )}
+
           {view.event && (
             <EventBanner
               event={view.event}
@@ -59,10 +68,7 @@ export function GameScreen({ player }: { player: PlayerState }) {
           )}
 
           <section className={styles.handSection} aria-label="Your hand">
-            <div className={styles.handHeader}>
-              <h2 className={styles.sectionTitle}>Your moves this month</h2>
-              <EnergyPips energy={player.energy} max={ENERGY_PER_MONTH} />
-            </div>
+            <h2 className={styles.sectionTitle}>Your moves this month</h2>
             <Hand
               hand={player.hand}
               previews={view.cardPreviews}
@@ -71,26 +77,17 @@ export function GameScreen({ player }: { player: PlayerState }) {
             />
           </section>
 
-          <section className={styles.endMonth} aria-label="End the month">
-            <div className={styles.endMonthText}>
-              <h2 className={styles.sectionTitle}>When the month ends</h2>
-              <p className={styles.hint}>
-                Card balances grow 2% in interest, loans pay down, and unplayed cards are discarded.
-              </p>
-              <DeltaPreview deltas={view.endMonthPreview} />
-            </div>
-            <button
-              type="button"
-              // Highlight the button once there is nothing left to do this month.
-              className={`button ${view.anyPlayable ? '' : 'button-primary'} ${styles.endButton}`}
-              disabled={view.awaitingChoice}
-              onClick={() => dispatch({ type: 'END_MONTH' })}
-            >
-              {lastMonth ? 'Apply for the mortgage' : `End month ${player.month}`}
-            </button>
-          </section>
-
           <Log entries={player.log} />
+
+          <ActionBar
+            energy={player.energy}
+            maxEnergy={ENERGY_PER_MONTH}
+            endPreview={view.endMonthPreview}
+            label={lastMonth ? 'Apply for the mortgage' : `End month ${player.month}`}
+            disabled={view.awaitingChoice}
+            highlight={!view.anyPlayable && !view.awaitingChoice}
+            onEnd={() => dispatch({ type: 'END_MONTH' })}
+          />
         </div>
       </div>
     </div>
