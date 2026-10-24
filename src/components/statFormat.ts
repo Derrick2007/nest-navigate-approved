@@ -32,7 +32,7 @@ export const STAT_EXPLANATIONS: Record<StatKey, string> = {
   utilization: 'Card balances divided by card limits. Under 30% helps your score; under 10% helps most.',
   cash: 'Pays your down payment (at least 3%), closing costs (3%) and two months of payments held in reserve.',
   monthlySavings:
-    'What you add to cash each month after rent and living costs. Side-gig income lands here but not in DTI.',
+    'What you add to cash each month after rent, living costs and card interest. Side-gig income lands here but not in DTI.',
 }
 
 export function formatStat(stat: StatKey, value: number): string {

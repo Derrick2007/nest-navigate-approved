@@ -11,7 +11,8 @@ function Screen({ game }: { game: GameState }) {
     case 'start':
       return <StartScreen />
     case 'playing':
-      return <GameScreen player={game.player} />
+    case 'draft':
+      return <GameScreen player={game.player} drafting={game.phase === 'draft'} />
     case 'underwriting':
       return <UnderwritingScreen player={game.player} />
     case 'result':
