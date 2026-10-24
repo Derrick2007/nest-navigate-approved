@@ -27,6 +27,9 @@
 }
 
 .goalValue {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 40px;
   font-weight: 800;
   line-height: 1.1;
@@ -91,8 +94,9 @@
 
 .rowValue {
   display: grid;
+  justify-items: end;
   margin: 0;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -136,4 +140,93 @@
   justify-content: space-between;
   gap: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+.group {
+  display: grid;
+  gap: 10px;
+}
+
+.groupLabel {
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.valueLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.secondary {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.secondaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.secondaryRow .rowLabel {
+  font-size: 13px;
+}
+
+.secondaryValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The "+29" that appears next to a number right after it moves. */
+.flash {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: flash 2.4s ease-out forwards;
+}
+
+.flashGood {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.flashBad {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+@keyframes flash {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.9);
+  }
+  10%,
+  75% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash {
+    animation: none;
+  }
 }

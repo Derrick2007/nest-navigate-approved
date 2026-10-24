@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react'
 import type { CreditBreakdown } from '../engine/credit'
 import { formatCompactMoney, formatRate } from '../engine/format'
 import type { StatKey, StatSnapshot } from '../engine/preview'
 import { MIN_CREDIT_SCORE, type UnderwritingResult } from '../engine/underwrite'
+import { useStatChanges, type StatChanges } from '../hooks/useStatChanges'
 import styles from './StatPanel.module.css'
-import { formatStat, STAT_EXPLANATIONS, STAT_LABELS } from './statFormat'
+import { formatChange, formatStat, STAT_EXPLANATIONS, STAT_LABELS } from './statFormat'
 import { StatTooltip } from './StatTooltip'
 
 type Props = {
@@ -43,16 +45,57 @@ function statusLine(result: UnderwritingResult): { text: string; tone: Tone } {
   return { text: `Limited by ${limit}`, tone }
 }
 
-function StatRow({ stat, value, tone = 'neutral', detail }: { stat: StatKey; value: number; tone?: Tone; detail?: string }) {
+/** "+29" next to a number that just moved. Keyed on the change id so the animation replays. */
+function Flash({ stat, changes }: { stat: StatKey; changes: StatChanges }) {
+  const delta = changes.deltas[stat]
+  if (!delta) return null
+  return (
+    <span key={changes.id} className={`${styles.flash} ${delta.good ? styles.flashGood : styles.flashBad}`}>
+      {formatChange(delta)}
+    </span>
+  )
+}
+
+type RowProps = {
+  stat: StatKey
+  value: number
+  changes: StatChanges
+  tone?: Tone
+  detail?: string
+  /** Replaces the default one-sentence explanation. */
+  tooltip?: ReactNode
+}
+
+/** One of the three numbers a lender reads: large, with an explanation. */
+function PrimaryRow({ stat, value, changes, tone = 'neutral', detail, tooltip }: RowProps) {
   return (
     <div className={styles.row}>
       <dt className={styles.rowLabel}>
         {STAT_LABELS[stat]}
+        <StatTooltip label={STAT_LABELS[stat]}>{tooltip ?? STAT_EXPLANATIONS[stat]}</StatTooltip>
+      </dt>
+      <dd className={styles.rowValue}>
+        <span className={styles.valueLine}>
+          <Flash stat={stat} changes={changes} />
+          <span className={styles[tone]}>{formatStat(stat, value)}</span>
+        </span>
+        {detail && <span className={styles.rowDetail}>{detail}</span>}
+      </dd>
+    </div>
+  )
+}
+
+/** A supporting number: smaller, below the three that matter most. */
+function SecondaryRow({ stat, value, changes, tone = 'neutral' }: RowProps) {
+  return (
+    <div className={styles.secondaryRow}>
+      <dt className={styles.rowLabel}>
+        {STAT_LABELS[stat]}
         <StatTooltip label={STAT_LABELS[stat]}>{STAT_EXPLANATIONS[stat]}</StatTooltip>
       </dt>
-      <dd className={`${styles.rowValue} ${styles[tone]}`}>
-        {formatStat(stat, value)}
-        {detail && <span className={styles.rowDetail}>{detail}</span>}
+      <dd className={styles.secondaryValue}>
+        <Flash stat={stat} changes={changes} />
+        <span className={styles[tone]}>{formatStat(stat, value)}</span>
       </dd>
     </div>
   )
@@ -60,8 +103,25 @@ function StatRow({ stat, value, tone = 'neutral', detail }: { stat: StatKey; val
 
 /** The numbers a lender reads, plus what they add up to today. */
 export function StatPanel({ stats, credit, result }: Props) {
+  const changes = useStatChanges(stats)
   const progress = Math.min(1, stats.maxPrice / result.targetPrice)
   const status = statusLine(result)
+
+  const scoreTooltip = (
+    <>
+      <span className={styles.tipIntro}>{STAT_EXPLANATIONS.score}</span>
+      <span className={styles.parts}>
+        {CREDIT_PARTS.map((part) => (
+          <span key={part.key} className={styles.part}>
+            <span>{part.label}</span>
+            <span>
+              {Math.round(credit[part.key])} / {part.max}
+            </span>
+          </span>
+        ))}
+      </span>
+    </>
+  )
 
   return (
     <section className={styles.panel} aria-label="Your numbers">
@@ -70,7 +130,10 @@ export function StatPanel({ stats, credit, result }: Props) {
           {STAT_LABELS.maxPrice} today
           <StatTooltip label={STAT_LABELS.maxPrice}>{STAT_EXPLANATIONS.maxPrice}</StatTooltip>
         </p>
-        <p className={styles.goalValue}>{formatStat('maxPrice', stats.maxPrice)}</p>
+        <p className={styles.goalValue}>
+          {formatStat('maxPrice', stats.maxPrice)}
+          <Flash stat="maxPrice" changes={changes} />
+        </p>
         <div
           className={styles.bar}
           role="progressbar"
@@ -88,33 +151,30 @@ export function StatPanel({ stats, credit, result }: Props) {
         {result.quote && <p className={styles.goalMeta}>Your rate today: {formatRate(result.quote.rate.total)}</p>}
       </div>
 
-      <dl className={styles.rows}>
-        <div className={styles.row}>
-          <dt className={styles.rowLabel}>
-            {STAT_LABELS.score}
-            <StatTooltip label="how your score is built">
-              <span className={styles.tipIntro}>{STAT_EXPLANATIONS.score}</span>
-              <span className={styles.parts}>
-                {CREDIT_PARTS.map((part) => (
-                  <span key={part.key} className={styles.part}>
-                    <span>{part.label}</span>
-                    <span>
-                      {Math.round(credit[part.key])} / {part.max}
-                    </span>
-                  </span>
-                ))}
-              </span>
-            </StatTooltip>
-          </dt>
-          <dd className={`${styles.rowValue} ${styles[scoreTone(stats.score)]}`}>
-            {stats.score}
-            <span className={styles.rowDetail}>needs {MIN_CREDIT_SCORE}+</span>
-          </dd>
-        </div>
-        <StatRow stat="utilization" value={stats.utilization} tone={utilizationTone(stats.utilization)} />
-        <StatRow stat="dti" value={stats.dti} detail="before housing" />
-        <StatRow stat="cash" value={stats.cash} />
-        <StatRow stat="monthlySavings" value={stats.monthlySavings} detail="per month" />
+      <div className={styles.group}>
+        <p className={styles.groupLabel}>What the lender checks</p>
+        <dl className={styles.rows}>
+          <PrimaryRow
+            stat="score"
+            value={stats.score}
+            changes={changes}
+            tone={scoreTone(stats.score)}
+            detail={`needs ${MIN_CREDIT_SCORE}+`}
+            tooltip={scoreTooltip}
+          />
+          <PrimaryRow stat="dti" value={stats.dti} changes={changes} detail="debts before housing" />
+          <PrimaryRow stat="cash" value={stats.cash} changes={changes} />
+        </dl>
+      </div>
+
+      <dl className={styles.secondary}>
+        <SecondaryRow
+          stat="utilization"
+          value={stats.utilization}
+          changes={changes}
+          tone={utilizationTone(stats.utilization)}
+        />
+        <SecondaryRow stat="monthlySavings" value={stats.monthlySavings} changes={changes} />
       </dl>
     </section>
   )
