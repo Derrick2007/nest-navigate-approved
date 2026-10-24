@@ -1,0 +1,280 @@
+# Approved: Implementation Spec
+
+This is the build spec for the prototype. The design brief lives in the README; this file is the source of truth for rules, numbers, data and structure. All lending rules are **simplified for teaching** and the numbers are illustrative, not current market data.
+
+## 1. One-line pitch and core lesson
+
+You have 12 months to get mortgage-ready for a **$325,000** home. Each month you play financial moves that change your credit score, debt-to-income ratio (DTI) and cash. In month 12 the Underwriter decides how much house you qualify for and at what rate.
+
+**Core lesson:** a lender reads a few numbers that pull against each other, and small differences in them become very large differences in what you can buy and what you pay over 30 years.
+
+## 2. Scope and priorities
+
+| Priority | What | Must ship? |
+|---|---|---|
+| P0 | Start screen, 12-month loop, cards, events, stat panel with previews, underwriting reveal, result screen with lessons | Yes |
+| P0 | Deployed on Vercel, README complete | Yes |
+| P1 | Engine unit tests (Vitest), seeded RNG with a "play this seed again" button, keyboard support, mobile-friendly layout | Strongly wanted |
+| P2 | Habits (relics) picked at months 4 and 8, sound, animations with Framer Motion | Nice to have |
+| P3 | Phaser 3 layer for the underwriting reveal (stamp, confetti particles) | Bonus only |
+
+Rule: do not start a P(n+1) item until all P(n) items work end to end.
+
+## 3. Screens and flow
+
+```
+Start ──▶ Month loop (×12) ──▶ Underwriting reveal ──▶ Result
+            │  1 Paycheck
+            │  2 Life event (may ask a choice)
+            │  3 Draw hand, spend energy on cards
+            │  4 End month (interest, overdraft check)
+```
+
+1. **Start screen.** Title, one-paragraph setup ("You earn $90k, rent in the city, and want a $325k starter home in a year"), the three numbers lenders check with a one-line plain-English definition each, a "Start" button, a "How to play" disclosure.
+2. **Game screen.** Layout: stat panel (left or top on mobile), month tracker (1–12), event banner, hand of cards, energy pips, "End month" button, a small log of what happened.
+3. **Underwriting reveal.** Step-by-step checklist that animates one line at a time: credit score gate, cash for down payment + closing + reserves, DTI at the target price, then the rate being built tier by tier (base rate + credit adjustment + down payment adjustment).
+4. **Result screen.** Outcome badge, the numbers (max price, rate, monthly payment, 30-year interest), a "what if" comparison, 2–3 lessons drawn from what the player actually did, "Play again" and "Same seed" buttons.
+
+## 4. State model
+
+```ts
+type Account = {
+  id: string;
+  kind: 'revolving' | 'installment';
+  name: string;
+  ageYears: number;        // grows by 1/12 each month
+  balance: number;
+  limit?: number;          // revolving only
+  monthlyPayment: number;  // min payment for revolving = 3% of balance
+  open: boolean;
+};
+
+type PlayerState = {
+  month: number;                // 1..12
+  cash: number;
+  grossMonthlyIncome: number;   // only verified income, used for DTI
+  unverifiedIncome: number;     // side gig etc., adds cash but NOT counted for DTI
+  monthlySurplus: number;       // cash added every paycheck after rent and living costs
+  accounts: Account[];
+  missedPayments: number;
+  hardInquiries: number;        // in the last 12 months
+  targetPrice: number;
+  baseRate: number;             // percent, e.g. 6.25
+  flags: Record<string, boolean>; // autopay, playedCards, etc.
+  energy: number;
+  hand: CardId[];
+  deck: CardId[];
+  discard: CardId[];
+  pendingEvent?: EventInstance;
+  log: LogEntry[];
+  seed: number;
+};
+```
+
+Derived values are **pure functions**, never stored: `creditScore(state)`, `utilization(state)`, `dti(state, housingPayment)`, `underwrite(state)`.
+
+## 5. Starting state
+
+| Field | Value |
+|---|---|
+| Gross monthly income | $7,500 ($90k/yr) |
+| Cash | $22,000 |
+| Monthly surplus | $700 |
+| Target price | $325,000 |
+| Base rate | 6.25% |
+| Missed payments | 1 |
+| Hard inquiries | 1 |
+
+Accounts:
+
+| Name | Kind | Age (yr) | Balance | Limit | Monthly payment |
+|---|---|---|---|---|---|
+| Old Faithful Visa | revolving | 8 | $2,500 | $3,000 | 3% of balance |
+| Rewards Card | revolving | 2 | $2,000 | $3,000 | 3% of balance |
+| Car Loan | installment | 3 | $9,000 | | $380 |
+| Student Loan | installment | 6 | $24,000 | | $250 |
+
+With these numbers the starting score is **656** and a player who does nothing qualifies for roughly **$278k**, short of the $325k target. Good play reaches $310k–$365k. Closing the oldest card drops the score to about **618**, below the 620 gate. These outcomes are intentional; keep them when tuning.
+
+## 6. Formulas
+
+### 6.1 Credit score (simplified FICO-style, 300–850)
+
+```
+score = 300 + paymentHistory + utilizationPts + agePts + newCreditPts + mixPts
+
+paymentHistory = max(0, 192 × (1 − 0.15 × missedPayments))     // ~35%
+utilization u  = sum(revolving balances) / sum(revolving limits), open cards only
+utilizationPts = u ≤ 10% → 165 | ≤ 30% → 140 | ≤ 50% → 100 | ≤ 75% → 60 | else 30   // ~30%
+agePts         = min(82, averageAgeOfOpenAccounts × 8)          // ~15%
+newCreditPts   = max(0, 55 − 15 × hardInquiries)                // ~10%
+mixPts         = has open revolving AND open installment → 55, else 30   // ~10%
+```
+
+Round to an integer. Show the five components in the stat panel tooltip; this is part of the teaching.
+
+### 6.2 DTI
+
+```
+otherDebts = sum(monthlyPayment of open accounts)
+dti(housing) = (otherDebts + housing) / grossMonthlyIncome
+```
+
+Unverified income never enters this formula. Rent is not a debt and is not included.
+
+### 6.3 Housing payment (PITI)
+
+```
+loan       = price × (1 − downPct)
+P&I        = standard amortizing payment, 30 years, annual rate r
+taxesIns   = price × 0.0015 per month
+pmi        = downPct < 20% ? loan × 0.007 / 12 : 0
+PITI       = P&I + taxesIns + pmi
+```
+
+### 6.4 Rate
+
+```
+rate = baseRate + creditAdj(score) + downAdj(downPct)
+
+creditAdj: ≥760 → 0 | 740–759 → 0.125 | 720–739 → 0.25 | 700–719 → 0.375
+           680–699 → 0.5 | 660–679 → 0.75 | 640–659 → 1.0 | 620–639 → 1.25
+downAdj:   ≥20% → 0 | 10–19.99% → 0.125 | 3–9.99% → 0.25
+```
+
+### 6.5 Underwriting
+
+`underwrite(state)` returns a full breakdown used by the reveal screen:
+
+1. **Credit gate.** Score < 620 → `DENIED` with reason "credit".
+2. Search price from $100,000 to $800,000 in $1,000 steps. For each price:
+   - closing costs = 3% of price
+   - reserves required = 2 × PITI
+   - downPct = min(20%, (cash − closing − reserves) / price), solved by a few fixed-point iterations because PITI depends on downPct
+   - reject if downPct < 3% (reason "cash")
+   - reject if DTI > 43% (reason "dti")
+3. The highest passing price is `maxPrice`. Record which constraint stopped the next step up (`bindingConstraint`: `cash` or `dti`). This is the most important teaching fact on the result screen.
+4. Outcome: `maxPrice ≥ targetPrice` → `APPROVED`; `maxPrice ≥ 0.85 × targetPrice` → `APPROVED_SMALLER`; no passing price → `DENIED`; otherwise `APPROVED_SMALLER` with a warning tone.
+
+Also return, at the target price (or maxPrice if lower): rate with its tier breakdown, monthly PITI, total interest over 30 years, and the same numbers for a score 40 points higher (the "what if").
+
+## 7. Month loop rules
+
+1. **Paycheck:** `cash += monthlySurplus + unverifiedIncome`. Account ages +1/12.
+2. **Event:** draw one event from the event deck (seeded). If it has a choice, block until the player picks.
+3. **Hand:** draw 5 cards, energy = 3. Each card costs 1 or 2 energy. Unplayed cards go to discard. Reshuffle discard when deck is empty.
+4. **End month:**
+   - Revolving balances grow by 2% (24% APR). Log the interest charged.
+   - Installment balances drop by their payment's principal share (simplify: balance −= 0.6 × payment).
+   - If `cash < 0`: move the shortfall onto the revolving card with most room. If no card has room, `missedPayments += 1` (unless `flags.autopay`) and set cash to 0.
+5. After month 12, go to the reveal.
+
+Every card and event choice must show a **preview** before committing: a list of stat deltas, including the derived ones (score, DTI, max price if it is cheap to compute). Use the same pure functions on a cloned state; do not hand-write preview numbers.
+
+## 8. Cards
+
+Deck starts with 2 copies of cards marked ×2, 1 copy otherwise. `once` cards are removed after being played. Every card has a `lesson` string shown on the result screen if the player played it.
+
+| Id | Name | Cost | Effect | Lesson (short) |
+|---|---|---|---|---|
+| `pay_card_1k` ×2 | Pay Down a Card | 1 | cash −1,000; highest-utilization card balance −1,000 | Utilization is about 30% of your score and updates monthly |
+| `balance_blitz` | Balance Blitz | 2 | cash −2,500 split across cards | Getting under 30%, then 10%, unlocks big jumps |
+| `extra_car` | Extra Car Payment | 1 | cash −1,500; car balance −1,500 | Lowering a balance doesn't lower DTI; the payment is what counts |
+| `pay_off_car` once | Pay Off the Car | 2 | cash −car balance; car account closed | Removing a monthly payment frees DTI room for housing |
+| `side_gig` once | Start a Side Gig | 1 | unverifiedIncome +600 | Lenders usually want about 2 years of history before counting new income |
+| `ask_raise` once | Ask for a Raise | 1 | 50%: income +5% (verified) | Same-employer raises count right away |
+| `limit_increase` once | Request Limit Increase | 1 | Old Faithful limit +3,000 | More available credit lowers utilization without paying anything |
+| `store_card` | Store Card Bonus | 1 | cash +200; inquiry +1; new revolving account, age 0, limit 1,500 | New accounts cost inquiries and lower average age |
+| `close_old` once | Close Your Oldest Card | 1 | Old Faithful closed (balance moved to Rewards Card) | Closing old cards shortens history and raises utilization |
+| `meal_prep` ×2 | Meal Prep Month | 1 | cash +400 | Cash covers down payment, closing costs and reserves |
+| `sell_stuff` | Sell Unused Stuff | 2 | cash +900 | |
+| `cheaper_place` once | Move Somewhere Cheaper | 2 | cash −800; monthlySurplus +300 | Recurring savings compound over the year |
+| `autopay` once | Set Up Autopay | 1 | flags.autopay = true | Payment history is the largest score factor |
+| `dispute` once | Dispute a Report Error | 1 | 40%: missedPayments −1 | Credit reports contain errors; checking is free |
+| `consolidate` once | Personal Loan Consolidation | 1 | inquiry +1; card balances → new installment loan at 4% of balance per month | Can help utilization but adds a payment and an inquiry |
+
+Card data lives in one typed array (`src/data/cards.ts`); effects are pure functions `(state, rng) => state`.
+
+## 9. Events
+
+One per month. Weighted random, no immediate repeats. Events with a choice show both previews.
+
+| Id | Name | Effect / choices |
+|---|---|---|
+| `quiet` | Quiet Month | nothing (weight 2) |
+| `rent_hike` | Rent Goes Up | monthlySurplus −150 |
+| `medical` | Urgent Care Bill | pay $1,200 cash **or** put it on a card |
+| `car_trouble` | Car Breaks Down | repair $2,500 cash/card **or** finance a newer car: new installment $450/mo, inquiry +1 |
+| `prices_up` | Home Prices Climb | targetPrice × 1.03 |
+| `rates_up` | Rates Tick Up | baseRate +0.25 |
+| `rates_down` | Rates Ease | baseRate −0.25 |
+| `tax_refund` | Tax Refund | cash +1,500 |
+| `bonus` | Work Bonus | cash +2,000 |
+| `wedding` | Friend's Wedding | go: $800 cash/card **or** skip: nothing |
+| `card_offer` | Pre-Approved Offer | accept: same as Store Card but limit 5,000, no cash **or** decline |
+| `furniture_promo` | 0% Furniture Deal | finance: installment $120/mo, inquiry +1 **or** pass (only months 8–12; teaches not taking new credit right before applying) |
+
+## 10. Result screen content
+
+- **Outcome badge:** Approved / Approved for less / Denied, with the reason in one sentence.
+- **Numbers:** max price vs target, rate (with the tier breakdown), monthly payment, 30-year total interest.
+- **What if:** "With a score 40 points higher, your rate would be X% and you'd pay $Y less over 30 years."
+- **Binding constraint:** "You were limited by DTI" or "You were limited by cash", with one sentence on which lever would have moved it.
+- **Lessons:** up to 3 lessons from cards and events the player actually hit, prioritised by impact (closing old card, side gig not counting, paying off car, utilization).
+- Buttons: Play again (new seed), Replay this seed.
+
+## 11. Architecture
+
+Stack: **Vite + React + TypeScript**, plain CSS Modules (or Tailwind), **Vitest** for engine tests. State with `useReducer` + context; no external state library needed. Optional later: Framer Motion, Phaser 3.
+
+```
+src/
+  engine/            # pure TypeScript, no React imports
+    types.ts
+    rng.ts           # seeded RNG (mulberry32)
+    credit.ts        # creditScore + components
+    mortgage.ts      # pmt, piti, rate tiers
+    underwrite.ts
+    reducer.ts       # actions: START, RESOLVE_EVENT, PLAY_CARD, END_MONTH, RESTART
+    preview.ts       # diff two states into display deltas
+    __tests__/
+  data/
+    cards.ts
+    events.ts
+    initialState.ts
+  components/
+    StatPanel.tsx  StatTooltip.tsx  Card.tsx  Hand.tsx  EnergyPips.tsx
+    EventBanner.tsx  MonthTracker.tsx  DeltaPreview.tsx  Log.tsx
+  screens/
+    StartScreen.tsx  GameScreen.tsx  UnderwritingScreen.tsx  ResultScreen.tsx
+  hooks/
+    useGame.ts
+  App.tsx
+```
+
+Principles: engine is framework-free and fully tested; components receive data via props and dispatch actions; no business logic in components; card and event content is data, not code branches.
+
+## 12. Tests to write (P1)
+
+- Starting state scores 656 and underwrites to about $278k.
+- Closing the oldest card from the start drops the score below 620 and underwriting returns DENIED.
+- Paying off the car lowers DTI and raises max price.
+- Side gig increases cash but does not change DTI.
+- Utilization tiers hit their boundaries correctly.
+- Same seed and same actions produce the same game.
+
+## 13. Build milestones (commit at each)
+
+1. Scaffold Vite + React + TS, deploy blank app to Vercel.
+2. Engine: credit, mortgage, underwrite + tests.
+3. Reducer and data: cards, events, month loop (playable in a bare UI).
+4. Game screen UI with stat panel and previews.
+5. Start, underwriting reveal and result screens.
+6. Balance pass by playing 5+ runs; tune numbers but keep section 5 outcomes.
+7. Polish: responsive layout, keyboard, empty and edge states.
+8. README sections filled, known issues listed, final deploy.
+9. Stretch: habits, Phaser reveal.
+
+## 14. Copy and tone
+
+Speak to a nervous first-time buyer. Short sentences, no jargon without a one-line explanation, never shame the player. Every number on screen should be explainable in one tooltip sentence.
