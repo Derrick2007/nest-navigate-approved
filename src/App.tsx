@@ -1,11 +1,20 @@
-// Placeholder shell for milestone 1. Screens (Start, Game, Underwriting,
-// Result) replace this in milestones 4–5; see docs/SPEC.md §3.
+import { useMemo, useReducer } from 'react'
+import { gameReducer, initialGameState } from './engine/reducer'
+import { GameContext } from './hooks/useGame'
+import { BareGameScreen } from './screens/BareGameScreen'
+
 function App() {
+  const [game, dispatch] = useReducer(gameReducer, initialGameState)
+  // Stable context value so consumers only re-render when the game changes.
+  const value = useMemo(() => ({ game, dispatch }), [game])
+
   return (
-    <main className="app">
-      <h1>Approved</h1>
-      <p>You have 12 months to get mortgage-ready. Coming soon.</p>
-    </main>
+    <GameContext.Provider value={value}>
+      <main className="app">
+        <h1>Approved</h1>
+        <BareGameScreen />
+      </main>
+    </GameContext.Provider>
   )
 }
 

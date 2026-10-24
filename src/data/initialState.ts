@@ -20,12 +20,14 @@ export function createInitialState(seed: number): PlayerState {
     targetPrice: 325_000,
     baseRate: 6.25,
     flags: {},
-    energy: 3,
-    // The deck is built from src/data/cards.ts in milestone 3.
+    // The deck is shuffled and month 1 begins in newRun (engine/reducer.ts).
+    energy: 0,
     hand: [],
     deck: [],
     discard: [],
+    event: null,
     log: [],
     seed,
+    rngState: seed,
   }
 }

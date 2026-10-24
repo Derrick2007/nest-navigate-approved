@@ -60,16 +60,19 @@ type PlayerState = {
   hardInquiries: number;        // in the last 12 months
   targetPrice: number;
   baseRate: number;             // percent, e.g. 6.25
-  flags: Record<string, boolean>; // autopay, playedCards, etc.
+  flags: Record<string, boolean>; // autopay, plus "card:<id>" / "event:<id>:<choice>" markers for lessons
   energy: number;
   hand: CardId[];
   deck: CardId[];
   discard: CardId[];
-  pendingEvent?: EventInstance;
+  event: { eventId: EventId; resolved: boolean } | null; // this month's event; cards are blocked until resolved
   log: LogEntry[];
-  seed: number;
+  seed: number;     // the run's seed, for "Replay this seed"
+  rngState: number; // seeded generator position; the reducer saves it back after every random draw
 };
 ```
+
+The reducer wraps this in `GameState = { phase: 'start' } | { phase: 'playing' | 'finished'; player: PlayerState }`.
 
 Derived values are **pure functions**, never stored: `creditScore(state)`, `utilization(state)`, `dti(state, housingPayment)`, `underwrite(state)`.
 
@@ -166,7 +169,10 @@ Also return, at the target price (or maxPrice if lower): rate with its tier brea
 4. **End month:**
    - Revolving balances grow by 2% (24% APR). Log the interest charged.
    - Installment balances drop by their payment's principal share (simplify: balance −= 0.6 × payment).
-   - If `cash < 0`: move the shortfall onto the revolving card with most room. If no card has room, `missedPayments += 1` (unless `flags.autopay`) and set cash to 0.
+   - If `cash < 0`: move the shortfall onto the revolving card with most room. If any part of it doesn't fit, `missedPayments += 1` (unless `flags.autopay`) and set cash to 0.
+   - An installment loan whose balance reaches 0 closes.
+
+"Put it on a card" choices use the same rule: the card with the most room takes what fits and the rest comes out of cash. Cards that spend cash are unavailable when the player can't afford them, and each card states why it is unavailable.
 5. After month 12, go to the reveal.
 
 Every card and event choice must show a **preview** before committing: a list of stat deltas, including the derived ones (score, DTI, max price if it is cheap to compute). Use the same pure functions on a cloned state; do not hand-write preview numbers.
@@ -193,7 +199,7 @@ Deck starts with 2 copies of cards marked ×2, 1 copy otherwise. `once` cards ar
 | `dispute` once | Dispute a Report Error | 1 | 40%: missedPayments −1 | Credit reports contain errors; checking is free |
 | `consolidate` once | Personal Loan Consolidation | 1 | inquiry +1; card balances → new installment loan at 4% of balance per month | Can help utilization but adds a payment and an inquiry |
 
-Card data lives in one typed array (`src/data/cards.ts`); effects are pure functions `(state, rng) => state`.
+Card data lives in one typed `Record<CardId, CardDef>` (`src/data/cards.ts`), so the compiler flags a missing card; effects are pure functions `(state, rng) => state`. Balance Blitz splits in proportion to each card's balance.
 
 ## 9. Events
 
@@ -204,13 +210,13 @@ One per month. Weighted random, no immediate repeats. Events with a choice show 
 | `quiet` | Quiet Month | nothing (weight 2) |
 | `rent_hike` | Rent Goes Up | monthlySurplus −150 |
 | `medical` | Urgent Care Bill | pay $1,200 cash **or** put it on a card |
-| `car_trouble` | Car Breaks Down | repair $2,500 cash/card **or** finance a newer car: new installment $450/mo, inquiry +1 |
+| `car_trouble` | Car Breaks Down | repair $2,500 cash **or** on a card **or** finance a newer car: the trade-in closes the old car loan, new installment $450/mo, inquiry +1 |
 | `prices_up` | Home Prices Climb | targetPrice × 1.03 |
 | `rates_up` | Rates Tick Up | baseRate +0.25 |
 | `rates_down` | Rates Ease | baseRate −0.25 |
 | `tax_refund` | Tax Refund | cash +1,500 |
 | `bonus` | Work Bonus | cash +2,000 |
-| `wedding` | Friend's Wedding | go: $800 cash/card **or** skip: nothing |
+| `wedding` | Friend's Wedding | go: $800 cash (the overdraft rule moves it to a card if short) **or** skip: nothing |
 | `card_offer` | Pre-Approved Offer | accept: same as Store Card but limit 5,000, no cash **or** decline |
 | `furniture_promo` | 0% Furniture Deal | finance: installment $120/mo, inquiry +1 **or** pass (only months 8–12; teaches not taking new credit right before applying) |
 

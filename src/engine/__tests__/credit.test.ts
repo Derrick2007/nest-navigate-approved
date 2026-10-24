@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { creditBreakdown, creditScore, utilization, utilizationPoints } from '../credit'
-import { closeOldestCard, startState, updateAccount } from './helpers'
+import { updateAccount } from '../effects'
+import { closeOldestCard, startState } from './helpers'
 
 describe('creditScore', () => {
   it('scores the starting state at 656', () => {
