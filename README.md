@@ -2,6 +2,8 @@
 
 A 12-month, card-based run where you get mortgage-ready before you apply.
 
+**Play it:** https://nest-navigate-approved.vercel.app/
+
 > Built for the Nest Navigate Full Stack Engineering assignment. Lending rules in the game are simplified for teaching and are not financial advice.
 
 ## Game Concept
