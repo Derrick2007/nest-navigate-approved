@@ -1,5 +1,5 @@
 import { formatCompactMoney, formatMoney, formatPercent } from '../engine/format'
-import type { StatKey } from '../engine/preview'
+import type { Delta, StatKey } from '../engine/preview'
 
 // One place for how each stat is named and printed, shared by the stat panel
 // and every preview so the same number always looks the same.
@@ -48,5 +48,32 @@ export function formatStat(stat: StatKey, value: number): string {
     case 'cash':
     case 'monthlySavings':
       return formatMoney(value)
+  }
+}
+
+const signed = (change: number, format: (n: number) => string) => `${change > 0 ? '+' : '−'}${format(Math.abs(change))}`
+
+/**
+ * Just the change, for previews and the flash after a move: "+29", "−$1,000".
+ * Ratios show their new value with a direction ("↓ 58%"), since "−17 points"
+ * of a percentage is harder to read than where it ends up.
+ */
+export function formatChange({ stat, before, after, good }: Delta): string {
+  if (good === null) return 'no change'
+  const change = after - before
+  switch (stat) {
+    case 'maxPrice':
+      if (after <= 0) return 'Denied'
+      if (before <= 0) return formatCompactMoney(after)
+      return signed(change, formatCompactMoney)
+    case 'score':
+      return signed(Math.round(after) - Math.round(before), String)
+    case 'dti':
+    case 'utilization':
+      return `${change > 0 ? '↑' : '↓'} ${formatStat(stat, after)}`
+    case 'cash':
+      return signed(change, formatMoney)
+    case 'monthlySavings':
+      return `${signed(change, formatMoney)}/mo`
   }
 }

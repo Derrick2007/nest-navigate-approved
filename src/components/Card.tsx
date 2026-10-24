@@ -39,10 +39,13 @@ export function Card({ card, preview, unavailable, onPlay }: Props) {
         </p>
       )}
 
-      <div className={styles.preview}>
-        <p className={styles.previewLabel}>{card.odds !== undefined ? 'If it works' : 'If you play it'}</p>
-        <DeltaPreview deltas={preview} />
-      </div>
+      {/* Unplayable cards drop their preview: the reason is all the player needs. */}
+      {!unavailable && (
+        <div className={styles.preview}>
+          <p className={styles.previewLabel}>{card.odds !== undefined ? 'If it works' : 'If you play it'}</p>
+          <DeltaPreview deltas={preview} />
+        </div>
+      )}
 
       <footer className={styles.footer}>
         {unavailable ? (

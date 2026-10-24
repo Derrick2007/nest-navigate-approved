@@ -1,39 +1,30 @@
-.list {
-  display: grid;
-  align-content: start;
-  gap: 4px;
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
   font-size: 13px;
 }
 
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0 8px;
-  padding: 3px 8px;
-  border-radius: 6px;
-}
-
-/* If space runs out, the value drops to its own line rather than the label wrapping. */
-.label {
-  color: var(--ink-muted);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.value {
+.chip {
+  padding: 3px 9px;
+  border-radius: 999px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.label {
+  color: var(--ink-muted);
 }
 
 .good {
   background: var(--good-soft);
 }
 
-.good .value strong {
+.good strong {
   color: var(--good);
 }
 
@@ -41,7 +32,7 @@
   background: var(--bad-soft);
 }
 
-.bad .value strong {
+.bad strong {
   color: var(--bad);
 }
 
@@ -49,6 +40,7 @@
   background: var(--surface-muted);
 }
 
-.neutral .value {
+.neutral strong {
   color: var(--ink-muted);
+  font-weight: 600;
 }
